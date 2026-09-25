@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcfaf7" />
+    <title>Find ved at fravælge · eReolen GO!</title>
+    <link rel="stylesheet" href="../design-system-reference/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-backdrop" aria-hidden="true"><iframe src="../design-system-reference/min-side.html" title="Min side på eReolen GO!"></iframe></div>
+    <div class="page-scrim" aria-hidden="true"></div>
+    <main class="exclude-dialog" role="main" aria-live="polite">
+      <button class="close-button feature-close" type="button" aria-label="Luk funktionen" data-close><img src="../design-system-reference/assets/profile-close.svg" alt="" /></button>
+      <header class="flow-top">
+        <p class="eyebrow" data-kicker>FIND DIN NÆSTE FAVORIT</p>
+        <div class="step-count" data-count>Klar til at vælge</div>
+      </header>
+
+      <section class="screen intro-screen is-active" data-screen="intro" aria-labelledby="intro-title">
+        <div class="intro-copy"><p class="eyebrow">VÆLG VED AT FRAVÆLGE</p><h1 id="intro-title">Aner du ikke,<br />hvad du vil læse?</h1><p>Nogle gange er det nemmest at starte med at fjerne de bøger, du mindst har lyst til. Så finder vi stille og roligt frem til en bog, der passer til dig.</p><button class="primary-action" type="button" data-start>Prøv udelukker-funktionen</button></div>
+        <img class="intro-image" src="./assets/intro-bogvalg.png" alt="Barn, der overvejer hvilken bog det skal læse" />
+      </section>
+
+      <section class="screen choice-screen" data-screen="choices" hidden aria-labelledby="choice-title">
+        <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
+        <div class="choice-heading"><h1 id="choice-title" data-choice-title>Fjern de 3 bøger, du mindst vil læse.</h1><p data-choice-help>Klik på en bog for at fjerne den</p></div>
+        <aside class="saved-shelf" data-saved-shelf hidden></aside>
+        <div class="book-choices" data-book-choices></div>
+        <p class="selection-status" data-selection-status>Vælg 3 bøger</p>
+        <button class="circle-nav next-circle" type="button" aria-label="Fortsæt" data-next disabled>→</button>
+      </section>
+
+      <section class="screen saved-screen" data-screen="saved" hidden aria-labelledby="saved-title">
+        <button class="circle-nav previous-circle" type="button" aria-label="Tilbage til valget" data-saved-back>←</button>
+        <div class="choice-heading"><p class="eyebrow">DINE GEMTE BØGER</p><h1 id="saved-title">Her er bøgerne, du har gemt</h1><p>Du kan altid vende tilbage til dem senere.</p></div>
+        <div class="saved-books" data-saved-books></div>
+      </section>
+
+      <section class="screen length-screen" data-screen="length" hidden aria-labelledby="length-title">
+        <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
+        <div class="choice-heading"><h1 id="length-title">Her er bøgerne, du ikke fjernede.<br />Bliver nogen for korte eller for lange?</h1><p>Klik på en bog for at fjerne den</p></div>
+        <div class="book-choices detail-choices" data-length-choices></div>
+        <p class="selection-status" data-length-status>Du kan fjerne lige så mange, du vil</p>
+        <button class="circle-nav next-circle" type="button" aria-label="Se mit match" data-length-next>→</button>
+      </section>
+
+      <section class="screen match-screen" data-screen="match" hidden aria-labelledby="match-title">
+        <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
+        <div class="choice-heading"><p class="eyebrow">DET HAR DINE VALG TIL FÆLLES</p><h1 id="match-title" data-match-title>Det ser ud til, at venskab og mystik er noget for dig.</h1><p>Vil du læse en af dem – eller lede videre?</p></div>
+        <div class="match-books" data-match-books></div>
+        <div class="match-actions"><button class="secondary-action" type="button" data-more>Vis mig flere bøger</button><button class="primary-action" type="button" data-pick disabled>Prøv bog</button></div>
+      </section>
+
+      <section class="screen success-screen" data-screen="success" hidden aria-labelledby="success-title">
+        <div class="success-card" data-success-card></div>
+        <h1 id="success-title">Hurra!</h1>
+        <p>Så lykkedes det at finde en bog, selvom du ikke vidste, hvad du havde lyst til.</p>
+        <button class="secondary-action" type="button" data-restart>Læs bog</button>
+      </section>
+    </main>
+  </body>
+</html>

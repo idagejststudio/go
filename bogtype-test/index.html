@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcfaf7" />
+    <title>Hvilken bogtype er du? · eReolen GO!</title>
+    <link rel="stylesheet" href="../design-system-reference/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="booktype" data-app>
+      <section class="intro-screen" data-screen="intro">
+        <a class="back-link" href="../design-system-reference/index.html">← Tilbage til eReolen GO!</a>
+        <div class="intro-image"><img src="../design-system-reference/assets/imgScreenshot20230926At12451.png" alt="Børn, der finder deres bogtype" /></div>
+        <div class="intro-copy"><p class="eyebrow">LÆSEFAVORITTER</p><h1>Hvilken<br />bogtype er du?</h1><p>Er du en Føle-følesen, Action-jæger eller noget helt andet?</p><p>Tag testen og få boganbefalinger, der passer til lige præcis dig.</p><button class="primary-action" type="button" data-start>Tag bogtype-testen <span>→</span></button></div>
+      </section>
+
+      <section class="quiz-screen" data-screen="quiz" hidden>
+        <header class="quiz-bar"><button class="circle-nav" type="button" data-back aria-label="Forrige spørgsmål">←</button><strong>Læsefavoritter</strong><button class="circle-nav" type="button" data-exit aria-label="Afslut testen">×</button></header>
+        <div class="quiz-body">
+          <p class="quiz-count" data-count>Spørgsmål 1 af 7</p>
+          <h1 data-question></h1>
+          <div class="answer-set" data-answers></div>
+          <div class="choice-grid" data-visual-answers hidden></div>
+          <button class="next-arrow" type="button" data-next aria-label="Næste spørgsmål">→</button>
+        </div>
+        <footer class="progress-area"><div class="progress-meta"><span>Din bogtype-test</span><span data-count>Spørgsmål 1 af 7</span></div><div class="progress-track"><span data-progress></span></div></footer>
+      </section>
+
+      <section class="result-screen" data-screen="result" hidden>
+        <header class="quiz-bar"><button class="circle-nav" type="button" data-restart aria-label="Tag testen igen">↺</button><strong>Læsefavoritter</strong><button class="circle-nav" type="button" data-exit aria-label="Luk">×</button></header>
+        <div class="result-hero"><p class="eyebrow">DIN BOGTYPE ER</p><h1 data-result-name></h1><div class="persona-card"><div class="persona-mark" data-result-mark></div><div><h2 data-result-heading></h2><p data-result-copy></p><p><strong>Din bogsuperkraft:</strong> <span data-superpower></span></p></div></div></div>
+        <aside class="type-check" aria-label="Er du i tvivl om din bogtype?"><button type="button" data-dismiss-check aria-label="Luk">×</button><h2>Lyder det slet ikke som dig?</h2><p>Tjek de andre bogtyper ud og se, om der er en anden, der passer bedre på dig!</p><a class="pill-button" href="#andre-typer">Vis alle bogtyper</a></aside>
+        <section class="recommendation-section"><div class="section-heading"><div><p class="eyebrow">NÅR FANTASIEN KALDER</p><h2 data-shelf-heading></h2></div></div><div class="book-grid type-books" data-books></div></section>
+        <section class="recommendation-section second-shelf"><div class="section-heading"><div><p class="eyebrow">NÅR EVENTYRET VENTER</p><h2 data-shelf-heading-two></h2></div></div><div class="book-grid type-books" data-books-two></div><button class="primary-action result-restart" type="button" data-restart>Tag testen igen</button></section>
+        <section class="other-types" id="andre-typer"><p class="eyebrow">MÅSKE ER DU OGSÅ LIDT…</p><h2>Der findes flere bogtyper</h2><div class="type-list" data-type-list></div></section>
+      </section>
+    </main>
+  </body>
+</html>

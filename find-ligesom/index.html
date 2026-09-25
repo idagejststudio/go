@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcfaf7" />
+    <title>Find noget ligesom · eReolen GO!</title>
+    <link rel="stylesheet" href="../design-system-reference/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-backdrop" aria-hidden="true">
+      <iframe src="../design-system-reference/min-side.html?find-ligesom=1" title="Min side på eReolen GO!"></iframe>
+    </div>
+    <div class="page-scrim" data-scrim></div>
+    <main class="feature-dialog" role="dialog" aria-modal="true" aria-labelledby="feature-title" aria-describedby="feature-description" data-dialog>
+      <button class="close-button feature-close" type="button" aria-label="Luk Find noget ligesom" data-close>
+        <img src="../design-system-reference/assets/profile-close.svg" alt="" />
+      </button>
+      <header class="feature-heading">
+        <p class="eyebrow" data-step-label>Find din næste favorit</p>
+        <h1 id="feature-title" data-title>Find noget ligesom</h1>
+      </header>
+
+      <section class="flow-step is-active" data-step="1" aria-labelledby="feature-title">
+        <p class="step-intro" id="feature-description">Søg på en bog, du allerede har læst og som du godt kunne lide. Så finder vi en ny bog, som vi tror, du også vil kunne lide.</p>
+        <div class="book-search-wrap">
+          <form class="book-search" role="search" data-search-form>
+            <input type="search" name="book" placeholder="Søg" aria-label="Søg efter en bog, du kender" autocomplete="off" data-search />
+            <button type="submit" aria-label="Søg"><img src="../design-system-reference/assets/search.svg" alt="" /></button>
+          </form>
+          <div class="suggestions" data-suggestions hidden></div>
+        </div>
+        <div class="picked-book" data-picked hidden></div>
+        <div class="popular-block">
+          <p class="section-kicker">Eller vælg en af disse populære bøger, du holder af...</p>
+          <div class="popular-books" data-popular></div>
+        </div>
+      </section>
+
+      <section class="flow-step preference-step" data-step="2" aria-labelledby="preference-title" hidden>
+        <div class="selected-book-summary" data-selected-summary></div>
+        <h2 id="preference-title">Hvad kunne du godt lide ved den?</h2>
+        <p class="preference-hint">Vælg alt det, du synes passer</p>
+        <div class="preference-choices" data-preferences></div>
+      </section>
+
+      <section class="flow-step results-step" data-step="3" aria-labelledby="results-title" hidden>
+        <div class="recommendation-copy" data-recommendation-copy></div>
+        <h2 id="results-title">Hvilken vil du prøve?</h2>
+        <div class="recommendations" data-recommendations></div>
+      </section>
+
+      <footer class="feature-footer">
+        <button class="secondary-action back-action" type="button" data-back hidden>Tilbage</button>
+        <button class="primary-action next-action" type="button" data-next disabled>Næste</button>
+      </footer>
+    </main>
+
+  </body>
+</html>
