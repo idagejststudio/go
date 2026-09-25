@@ -1,4 +1,5 @@
 const A = "../design-system-reference/assets/";
+const API_BASE = "http://localhost:8787/api";
 const books = [
   ["Ormehullet", "Susanna Hartmann", "imgImage202.png"], ["Jagten på sandheden", "Kasper Hoff", "imgImage203.png"], ["Nedtælling", "Teri Terry", "imgImage48.png"], ["Brødrene Løvehjerte", "Astrid Lindgren", "imgImage193.png"], ["Mio, min Mio", "Astrid Lindgren", "imgImage192.png"], ["Pippi Langstrømpe", "Astrid Lindgren", "imgImage213.png"], ["Ronja Røverdatter", "Astrid Lindgren", "imgImage214.png"], ["Lotte fra Spektakelmagergade", "Astrid Lindgren", "imgImage219.png"]
 ];
@@ -10,6 +11,15 @@ const types = {
   Humoristen:{icon:"☻",color:"var(--sky)",heading:"Skørt? Ja tak! Kaos? Endnu bedre.",copy:"Du elsker bøger, der får dig til at fnise midt i bussen – og det er helt okay.",power:"Du får selv de kedeligste dage til at smile.",shelf:"Når Humoristen trænger til et grin",books:[5,7,1,6]},
   Vidensslugeren:{icon:"⌕",color:"var(--lavender)",heading:"Jeg har lige ét spørgsmål mere…",copy:"Du vil vide hvordan, hvorfor og hvad der mon sker, hvis man lige undersøger det lidt mere.",power:"Du gør nysgerrighed til en superkraft.",shelf:"Når Vidensslugeren vil opdage noget nyt",books:[1,0,2,4]}
 };
+const typeSearchTerms = {
+  Fantasten: "fantasy",
+  "Action-jægeren": "spænding",
+  "Føle-følesen": "kærlighed",
+  "Mysterie­løseren": "mystik",
+  Humoristen: "humor",
+  Vidensslugeren: "eventyr",
+};
+const apiTypeBooks = new Map();
 const questions = [
   {q:"Du finder en dør, du aldrig har set før. Hvad håber du, der er bag den?",a:[["Et rum fyldt med spor", "Mysterie­løseren"],["En hemmelig tunnel, der fører langt væk","Fantasten"],["Noget ingen andre har opdaget før","Vidensslugeren"],["En anden verden, hvor alt kan ske","Fantasten"]]},
   {q:"Hvem vil du vælge som hovedperson?",visual:true,a:[["En rumrejsende","Fantasten","🧑‍🚀","var(--lavender)"],["En superagent","Action-jægeren","🦸","var(--mint)"],["En sportsstjerne","Action-jægeren","⚽","var(--sky)"]]},
@@ -39,7 +49,49 @@ function advanceAfterChoice(){
   }, 500);
 }
 function choose(index){ picks[step] = index; drawQuiz(); advanceAfterChoice(); }
-function renderType(name, showResult = false){ const t=types[name], secondBooks=t.books.map(book=>(book+4)%books.length); const bookCards=list=>list.map(i=>`<a class="book-card" href="../design-system-reference/vaerk.html"><div class="cover-wrap"><img src="${A+books[i][2]}" alt="Forside til ${books[i][0]}"/></div><div class="book-info"><strong>${books[i][0]}</strong><span>${books[i][1]}</span></div></a>`).join(''); $('[data-result-name]').textContent=name; $('[data-result-heading]').textContent=t.heading; $('[data-result-copy]').textContent=t.copy; $('[data-superpower]').textContent=t.power; $('[data-shelf-heading]').textContent=t.shelf; $('[data-shelf-heading-two]').textContent=t.shelfTwo || `Når ${name} er klar til sit næste eventyr`; $('[data-result-mark]').textContent=t.icon; $('[data-result-mark]').style.background=t.color; $('[data-books]').innerHTML=bookCards(t.books); $('[data-books-two]').innerHTML=bookCards(secondBooks); $('[data-type-list]').innerHTML=Object.entries(types).filter(([n])=>n!==name).map(([n,x])=>`<button class="type-chip" type="button" data-type="${n}"><span style="background:${x.color}">${x.icon}</span><div><strong>${n}</strong><small>${x.heading}</small></div></button>`).join(''); if(showResult) show('result'); }
+async function getApiBooksForType(name) {
+  if (apiTypeBooks.has(name)) return apiTypeBooks.get(name);
+  try {
+    const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(typeSearchTerms[name])}`);
+    if (!response.ok) throw new Error("GO API unavailable");
+    const results = (await response.json()).results || [];
+    apiTypeBooks.set(name, results);
+    return results;
+  } catch {
+    apiTypeBooks.set(name, []);
+    return [];
+  }
+}
+
+function localBook(index) {
+  const [title, author, cover] = books[index];
+  return { title, author, coverUrl: A + cover, sourceUrl: "../design-system-reference/vaerk.html" };
+}
+
+function renderTypeBook(book) {
+  const href = book.sourceUrl || "../design-system-reference/vaerk.html";
+  return `<a class="book-card" href="${href}"><div class="cover-wrap"><img src="${book.coverUrl || A + book.cover}" alt="Forside til ${book.title}"/></div><div class="book-info"><strong>${book.title}</strong><span>${book.author}</span></div></a>`;
+}
+
+async function renderType(name, showResult = false){
+  const t=types[name];
+  const apiBooks = await getApiBooksForType(name);
+  const primaryBooks = apiBooks.length ? apiBooks.slice(0, 4) : t.books.map(localBook);
+  const secondBooks = apiBooks.length > 4 ? apiBooks.slice(4, 8) : t.books.map(book => localBook((book + 4) % books.length));
+  const bookCards=list=>list.map(renderTypeBook).join('');
+  $('[data-result-name]').textContent=name;
+  $('[data-result-heading]').textContent=t.heading;
+  $('[data-result-copy]').textContent=t.copy;
+  $('[data-superpower]').textContent=t.power;
+  $('[data-shelf-heading]').textContent=t.shelf;
+  $('[data-shelf-heading-two]').textContent=t.shelfTwo || `Når ${name} er klar til sit næste eventyr`;
+  $('[data-result-mark]').textContent=t.icon;
+  $('[data-result-mark]').style.background=t.color;
+  $('[data-books]').innerHTML=bookCards(primaryBooks);
+  $('[data-books-two]').innerHTML=bookCards(secondBooks);
+  $('[data-type-list]').innerHTML=Object.entries(types).filter(([n])=>n!==name).map(([n,x])=>`<button class="type-chip" type="button" data-type="${n}"><span style="background:${x.color}">${x.icon}</span><div><strong>${n}</strong><small>${x.heading}</small></div></button>`).join('');
+  if(showResult) show('result');
+}
 function result(){ const scores={}; picks.forEach((pick,i)=>{ const type=questions[i].a[pick][1]; scores[type]=(scores[type]||0)+1; }); const [name]=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0]||["Fantasten"]; renderType(name, true); }
 $("[data-start]").addEventListener('click',()=>{step=0;picks=[];show('quiz');drawQuiz();});
 document.addEventListener('click',e=>{ const answer=e.target.closest('[data-answer]'); if(answer) choose(Number(answer.dataset.answer)); const type=e.target.closest('[data-type]'); if(type){ renderType(type.dataset.type); window.scrollTo({top:0,behavior:'smooth'}); }});

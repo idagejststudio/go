@@ -1,4 +1,5 @@
 const assetRoot = "../design-system-reference/assets/";
+const apiBase = "http://localhost:8787/api";
 const books = [
   { title: "Pippi Langstrømpe", author: "Astrid Lindgren", year: "2008", cover: "imgImage213.png", traits: ["Sjov", "Personerne", "Tegningerne"] },
   { title: "Ronja Røverdatter", author: "Astrid Lindgren", year: "2008", cover: "imgImage214.png", traits: ["Der sker virkelig meget", "Personerne", "Universet", "Spændingen"] },
@@ -7,6 +8,7 @@ const books = [
   { title: "Mio, min Mio", author: "Astrid Lindgren", year: "2010", cover: "imgImage192.png", traits: ["Personerne", "Tegningerne", "Universet", "Spændingen"] },
   { title: "Vi på Krageøen", author: "Astrid Lindgren", year: "2011", cover: "imgImage43.png", traits: ["Sjov", "Personerne", "Universet"] },
 ];
+let availableBooks = [...books];
 const preferences = [
   ["Sjov", "humoren"],
   ["Der sker virkelig meget", "at der sker virkelig meget"],
@@ -27,8 +29,13 @@ let selectedBook = null;
 let selectedPreferences = new Set();
 let currentStep = 1;
 
+function coverUrl(book) {
+  return book.coverUrl || (book.cover?.startsWith("http") ? book.cover : assetRoot + book.cover);
+}
+
 function bookCard(book, className = "") {
-  return `<img src="${assetRoot}${book.cover}" alt=""/><span><strong>${book.title}</strong><small>${book.author} (${book.year})</small></span>`;
+  const year = book.year ? ` (${book.year})` : "";
+  return `<img src="${coverUrl(book)}" alt=""/><span><strong>${book.title}</strong><small>${book.author}${year}</small></span>`;
 }
 
 function selectBook(book) {
@@ -50,12 +57,51 @@ function renderSuggestions(query) {
     suggestionBox.innerHTML = "";
     return;
   }
-  const matches = books.filter(book => book.title.toLocaleLowerCase("da").includes(normalized) || book.author.toLocaleLowerCase("da").includes(normalized));
+  const matches = availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized) || book.author.toLocaleLowerCase("da").includes(normalized));
   suggestionBox.innerHTML = matches.length
     ? matches.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${book.title}" ${index === 0 ? 'aria-current="true"' : ""}>${bookCard(book)}</button>`).join("")
     : `<p class="no-suggestions">Vi fandt ikke den bog endnu. Prøv et af de populære valg herunder.</p>`;
   suggestionBox.hidden = false;
   suggestionBox.querySelectorAll("[data-suggestion]").forEach(button => button.addEventListener("click", () => selectBook(books.find(book => book.title === button.dataset.suggestion))));
+}
+
+async function searchBooks(query) {
+  const normalized = query.trim();
+  if (!normalized) return [];
+  try {
+    const response = await fetch(`${apiBase}/search?q=${encodeURIComponent(normalized)}`);
+    if (!response.ok) throw new Error("GO API unavailable");
+    const payload = await response.json();
+    const results = (payload.results || []).map(book => ({
+      ...book,
+      cover: book.coverUrl,
+      traits: book.subjects || [],
+    }));
+    if (results.length) {
+      availableBooks = [...results, ...books.filter(local => !results.some(book => book.title === local.title))];
+      return results;
+    }
+  } catch {
+    // The static catalog remains available when the adapter is not running.
+  }
+  return availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")) || book.author.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")));
+}
+
+let searchRequest = 0;
+async function renderApiSuggestions(query) {
+  const request = ++searchRequest;
+  const normalized = query.trim();
+  if (!normalized) return renderSuggestions(query);
+  suggestionBox.hidden = false;
+  suggestionBox.innerHTML = `<p class="no-suggestions">Søger på GO…</p>`;
+  const results = await searchBooks(normalized);
+  if (request !== searchRequest) return;
+  const matches = results.length ? results : availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")) || book.author.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")));
+  suggestionBox.innerHTML = matches.length
+    ? matches.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${book.title.replaceAll('"', '&quot;')}" ${index === 0 ? 'aria-current="true"' : ""}>${bookCard(book)}</button>`).join("")
+    : `<p class="no-suggestions">Vi fandt ikke den bog endnu. Prøv et andet søgeord.</p>`;
+  suggestionBox.hidden = false;
+  suggestionBox.querySelectorAll("[data-suggestion]").forEach(button => button.addEventListener("click", () => selectBook(availableBooks.find(book => book.title === button.dataset.suggestion))));
 }
 
 function renderPopular() {
@@ -106,13 +152,13 @@ function renderResults() {
   const likedText = liked.length < 2 ? liked[0] : `${liked.slice(0, -1).join(", ")} og ${liked.at(-1)}`;
   document.querySelector("[data-recommendation-copy]").innerHTML = `Hvis du kunne lide <strong>${likedText}</strong> i <strong>${selectedBook.title}</strong>, tror vi, du vil kunne lide…`;
   const preferencesToMatch = [...selectedPreferences].map(index => preferences[index][0]);
-  const recommendations = books
+  const recommendations = availableBooks
     .filter(book => book.title !== selectedBook.title)
     .map((book, index) => ({ book, index, score: book.traits.filter(trait => preferencesToMatch.includes(trait)).length }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .slice(0, 3)
     .map(item => item.book);
-  document.querySelector("[data-recommendations]").innerHTML = recommendations.map(book => `<article class="recommendation-card"><div class="cover"><img src="${assetRoot}${book.cover}" alt="Forside til ${book.title}"/></div><button class="save-book" type="button" aria-label="Gem ${book.title}" aria-pressed="false">♡</button><strong class="book-title">${book.title}</strong><span class="book-author">${book.author} (${book.year})</span></article>`).join("");
+  document.querySelector("[data-recommendations]").innerHTML = recommendations.map(book => `<article class="recommendation-card"><div class="cover"><img src="${coverUrl(book)}" alt="Forside til ${book.title}"/></div><button class="save-book" type="button" aria-label="Gem ${book.title}" aria-pressed="false">♡</button><strong class="book-title">${book.title}</strong><span class="book-author">${book.author}${book.year ? ` (${book.year})` : ""}</span></article>`).join("");
   document.querySelectorAll(".save-book").forEach(button => button.addEventListener("click", () => {
     const isSaved = button.getAttribute("aria-pressed") === "true";
     button.setAttribute("aria-pressed", String(!isSaved));
@@ -122,7 +168,7 @@ function renderResults() {
 
 renderPopular();
 renderPreferences();
-document.querySelector("[data-search-form]").addEventListener("submit", event => { event.preventDefault(); renderSuggestions(searchInput.value); suggestionBox.querySelector("[data-suggestion]")?.click(); });
+document.querySelector("[data-search-form]").addEventListener("submit", async event => { event.preventDefault(); await renderApiSuggestions(searchInput.value); suggestionBox.querySelector("[data-suggestion]")?.click(); });
 searchInput.addEventListener("input", () => {
   if (selectedBook && searchInput.value.trim() !== selectedBook.title) {
     selectedBook = null;
@@ -131,9 +177,9 @@ searchInput.addEventListener("input", () => {
     document.querySelectorAll(".popular-book").forEach(button => button.setAttribute("aria-pressed", "false"));
     nextButton.disabled = true;
   }
-  renderSuggestions(searchInput.value);
+  renderApiSuggestions(searchInput.value);
 });
-searchInput.addEventListener("focus", () => { if (searchInput.value) renderSuggestions(searchInput.value); });
+searchInput.addEventListener("focus", () => { if (searchInput.value) renderApiSuggestions(searchInput.value); });
 document.addEventListener("click", event => { if (!event.target.closest(".book-search-wrap")) suggestionBox.hidden = true; });
 nextButton.addEventListener("click", () => { if (currentStep === 1 && selectedBook) showStep(2); else if (currentStep === 2 && selectedPreferences.size) showStep(3); });
 function resetFlow() {
