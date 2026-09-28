@@ -14,6 +14,7 @@ RUN npm ci --omit=dev && npx playwright install --with-deps --only-shell chromiu
 WORKDIR /app
 COPY --chown=node:node go-api/server.js go-api/server.js
 COPY --chown=node:node index.html ./
+COPY --chown=node:node landing.css ./
 COPY --chown=node:node bogtype-test/ bogtype-test/
 COPY --chown=node:node design-system-reference/ design-system-reference/
 COPY --chown=node:node find-ligesom/ find-ligesom/

@@ -50,11 +50,12 @@ const mimeTypes = {
 };
 
 async function servePrototypeFile(pathname, res) {
+  if (pathname === "/") pathname = "/index.html";
   const allowed = [
     "/bogtype-test/", "/design-system-reference/", "/find-ligesom/",
     "/husk-din-huskeliste/", "/udelukkelsesfunktion/", "/ved-ikke-soegning/",
   ];
-  if (!allowed.some((prefix) => pathname.startsWith(prefix))) return false;
+  if (!["/index.html", "/landing.css"].includes(pathname) && !allowed.some((prefix) => pathname.startsWith(prefix))) return false;
   const filePath = pathname.endsWith("/") ? `${pathname}index.html` : pathname;
   if (!Object.hasOwn(mimeTypes, extname(filePath))) return false;
   const candidate = resolve(WORKSPACE_ROOT, `.${decodeURIComponent(filePath)}`);
@@ -538,10 +539,6 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   try {
-    if (url.pathname === "/") {
-      res.writeHead(302, { location: "/design-system-reference/" });
-      return res.end();
-    }
     if (await servePrototypeFile(url.pathname, res)) return;
     if (url.pathname === "/api/health") return json(res, 200, { ok: true });
     if (url.pathname === "/api/mock") return json(res, 200, { results: mockBooks, ageFilter: `${TARGET_AGE_MIN}-${TARGET_AGE_MAX}` });
