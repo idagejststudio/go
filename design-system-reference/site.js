@@ -35,7 +35,7 @@ function categoryCards() {
 }
 
 function cards(list = bookData, className = "") {
-  return `<div class="book-grid ${className}">${list.map(([title,author,cover,type],i)=>`<a class="book-card" href="./vaerk.html"><div class="cover-wrap"><img src="${A+cover}" alt="Forside til ${title}" /><button class="favorite" aria-label="Gem ${title}" type="button">♡</button></div><div class="book-info"><strong>${title}</strong><span>${author}</span><div class="book-tags"><span>${type}</span><span>${i%2 ? "Blå titel" : "Nyhed"}</span></div></div></a>`).join("")}</div>`;
+  return `<div class="book-grid ${className}">${list.map(([title,author,cover,type],i)=>`<a class="book-card" href="./vaerk.html"><div class="cover-wrap"><img src="${A+cover}" alt="Forside til ${title}" /><button class="favorite" aria-label="Gem ${title}" type="button" data-book-title="${escapeHTML(title)}" data-book-author="${escapeHTML(author)}" data-book-cover="${escapeHTML(cover)}" data-book-type="${escapeHTML(type)}">♡</button></div><div class="book-info"><strong>${title}</strong><span>${author}</span><div class="book-tags"><span>${type}</span><span>${i%2 ? "Blå titel" : "Nyhed"}</span></div></div></a>`).join("")}</div>`;
 }
 
 function footer() {
@@ -99,7 +99,25 @@ function searchPage() {
 const render = {home,work,account,category,filters,search: searchPage};
 app.innerHTML = `<div class="home">${header()}${(render[page] || home)()}${footer()}</div>${modal()}`;
 
-document.querySelectorAll(".favorite").forEach(button => button.addEventListener("click", event => { event.preventDefault(); event.stopPropagation(); button.classList.toggle("is-saved"); button.setAttribute("aria-pressed", String(button.classList.contains("is-saved"))); button.textContent = button.classList.contains("is-saved") ? "♥" : "♡"; }));
+document.querySelectorAll(".favorite").forEach(button => button.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  const saved = button.classList.toggle("is-saved");
+  button.setAttribute("aria-pressed", String(saved));
+  button.textContent = saved ? "♥" : "♡";
+
+  if (saved && button.dataset.bookTitle && window.parent !== window) {
+    window.parent.postMessage({
+      type: "open-wishlist-reminder",
+      book: {
+        title: button.dataset.bookTitle,
+        author: button.dataset.bookAuthor,
+        coverUrl: new URL(`${A}${button.dataset.bookCover}`, window.location.href).href,
+        format: button.dataset.bookType,
+      },
+    }, "*");
+  }
+}));
 document.querySelectorAll("[data-scroll]").forEach(button => button.addEventListener("click", () => { button.closest(".section-heading").nextElementSibling.scrollBy({left: Number(button.dataset.scroll) * 320, behavior: "smooth"}); }));
 document.querySelector("[data-open-find-similar]")?.addEventListener("click", () => {
   if (window.parent !== window) window.parent.postMessage({type: "open-find-ligesom"}, "*");

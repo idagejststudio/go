@@ -1,5 +1,7 @@
-const apiBase = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
-const goSearchBase = "https://go.bibliotek.kk.dk/search?q=";
+const apiBase = new URLSearchParams(location.search).get("api") ||
+  ((location.protocol === "file:" || ["localhost", "127.0.0.1"].includes(location.hostname)) && location.port !== "8787"
+    ? "http://localhost:8787/api"
+    : "/api");
 const seedQueries = ["venskab", "eventyr", "mystik", "humor", "fantasy", "spænding"];
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -20,6 +22,14 @@ const cover = (book) => book.coverUrl ? `<img src="${escapeHtml(book.coverUrl)}"
 const pageCount = (book) => Number.isFinite(Number(book.pages)) && Number(book.pages) > 0 ? Number(book.pages) : [...bookKey(book)].reduce((total, character) => (total * 31 + character.charCodeAt(0)) % 201, 0) + 50;
 const exclusionCount = () => removedByRound.reduce((sum, set) => sum + set.size, 0) + matchRemoved.size;
 const countLabel = (count) => `${count} ${count === 1 ? "bog" : "bøger"} fravalgt`;
+const shuffle = (items) => {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+  }
+  return shuffled;
+};
 
 function show(name) {
   currentScreen = name;
@@ -63,7 +73,7 @@ function usefulTopics(books) {
 
 async function loadBatch(queries) {
   const request = ++loadRequest;
-  const topics = [...new Set([...queries, ...seedQueries, "skole", "familie", "dyr", "opdagelse"].filter(Boolean))];
+  const topics = shuffle([...new Set([...queries, ...seedQueries, "skole", "familie", "dyr", "opdagelse"].filter(Boolean))]);
   const search = async (query) => { try { return await api(`/search-fast?q=${encodeURIComponent(query)}`); } catch { return { results: [] }; } };
   const initialSets = [await search(topics[0])];
   if (request !== loadRequest) return [];
@@ -75,7 +85,7 @@ async function loadBatch(queries) {
   addResults(initialSets);
   if (candidates.size < 6) addResults(await Promise.all(topics.slice(1).map(search)));
   if (request !== loadRequest) return [];
-  const books = [...candidates.values()].slice(0, 6);
+  const books = shuffle([...candidates.values()]).slice(0, 6);
   books.forEach((book) => seenIds.add(bookKey(book)));
   return books;
 }
@@ -86,8 +96,9 @@ function renderChoiceLoading(message) {
 }
 async function startRound(queries) {
   show("choices");
-  $("[data-choice-title]").textContent = `Runde ${round + 1} af 3: Her er 6 bøger.`;
-  $("[data-choice-help]").textContent = "Du bestemmer selv, hvor mange du fjerner. Sidetallet kan hjælpe dig med at vælge.";
+  $("[data-round-label]").textContent = `${round + 1} UD AF 3`;
+  $("[data-choice-title]").textContent = "Hvilke bøger vil du IKKE læse?";
+  $("[data-choice-help]").textContent = "Du bestemmer selv, hvor mange du fjerner.";
   renderChoiceLoading("Finder 6 nye bøger og lydbøger i GO-kataloget…");
   const books = await loadBatch(queries);
   if (books.length < 6) {
@@ -100,7 +111,8 @@ async function startRound(queries) {
 }
 function renderRound() {
   const books = batches[round] || [], removed = removedByRound[round] || new Set();
-  $("[data-choice-title]").textContent = `Runde ${round + 1} af 3: Her er 6 bøger.`;
+  $("[data-round-label]").textContent = `${round + 1} UD AF 3`;
+  $("[data-choice-title]").textContent = "Hvilke bøger vil du IKKE læse?";
   $("[data-choice-help]").textContent = "Klik på en bog for at fjerne den. Du bestemmer selv, hvor mange du fjerner.";
   $("[data-book-choices]").innerHTML = books.map((book, index) => `<button class="choice-book ${removed.has(index) ? "is-removed" : ""}" type="button" data-book-index="${index}" aria-pressed="${removed.has(index)}">${cover(book)}<strong>${escapeHtml(book.title)}</strong><small>${escapeHtml(bookMeta(book))}</small><span class="book-length">${pageCount(book)} sider</span></button>`).join("");
   $("[data-book-choices]").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => toggleRemoval(button)));
@@ -129,15 +141,14 @@ function renderMatch() {
   matches.forEach((book) => savedBooks.set(bookKey(book), book));
   const topics = usefulTopics(matches);
   const category = topics[0] || "børnebøger";
-  const copy = topics.length > 1 ? `${topics[0]} samt ${topics[1]}` : category;
-  $("[data-match-title]").textContent = matches.length ? topics.length ? `Det ser ud til, at ${copy} er noget for dig.` : "Det ser ud til, at du er nysgerrig på nye historier." : "Du har fravalgt alle bøgerne.";
-  $("[data-match-summary]").textContent = matches.length ? `Her er alle ${matches.length} ${matches.length === 1 ? "bog" : "bøger"}, du beholdt på tværs af runderne. Tryk på en bog for at begynde at læse den.` : "Se flere bøger for at prøve med et nyt udvalg.";
-  $("[data-round-summary]").innerHTML = roundSurvivors.map((books, index) => `<span>Runde ${index + 1}: <b>${books?.length || 0}</b></span>`).join("");
-  $("[data-category]").textContent = `Se alle bøger om ${category}`;
-  $("[data-category]").disabled = !matches.length;
-  $("[data-category]").dataset.category = category;
+  const copy = topics.length > 1 ? `${topics[0]} og ${topics[1]}` : category;
+  $("[data-match-title]").textContent = matches.length ? topics.length ? `Dit match: ${copy}` : "Dit bogmatch" : "Du har fravalgt alle bøgerne.";
+  $("[data-match-summary]").textContent = matches.length ? `${matches.length} ${matches.length === 1 ? "bog" : "bøger"} tilbage. Vælg en bog for at læse den, eller fjern en bog, du ikke vil gemme.` : "Se flere bøger for at prøve med et nyt udvalg.";
+  const allOnWishlist = matches.length > 0 && matches.every((book) => wishlistedIds.has(bookKey(book)));
+  $("[data-category]").textContent = allOnWishlist ? "Alle er på min huskeliste" : "Gem alle til min huskeliste";
+  $("[data-category]").disabled = !matches.length || allOnWishlist;
   renderMatchSavedShelf();
-  $("[data-match-books]").innerHTML = matches.map((book) => { const key = bookKey(book), wished = wishlistedIds.has(key); return `<div class="match-book-wrap"><button type="button" class="match-book" data-read-book="${escapeHtml(key)}" aria-label="Læs ${escapeHtml(book.title)}">${cover(book)}<strong>${escapeHtml(book.title)}</strong><small>${escapeHtml(bookMeta(book))}</small><span class="book-length">${pageCount(book)} sider</span></button><button class="remove-match-book" type="button" data-remove-book="${escapeHtml(key)}">Fjern</button><button class="wishlist-book" type="button" data-wishlist-book="${escapeHtml(key)}" aria-pressed="${wished}" aria-label="${wished ? "Fjern" : "Tilføj"} ${escapeHtml(book.title)} ${wished ? "fra" : "til"} huskelisten">${wished ? "♥" : "♡"}</button></div>`; }).join("");
+  $("[data-match-books]").innerHTML = matches.map((book) => { const key = bookKey(book), wished = wishlistedIds.has(key); return `<div class="match-book-wrap"><button type="button" class="match-book" data-read-book="${escapeHtml(key)}" aria-label="Læs ${escapeHtml(book.title)}">${cover(book)}<strong>${escapeHtml(book.title)}</strong><small>${escapeHtml(bookMeta(book))}</small><span class="book-length">${pageCount(book)} sider</span></button><div class="match-book-actions"><button class="remove-match-book" type="button" data-remove-book="${escapeHtml(key)}">Fjern</button><button class="wishlist-book" type="button" data-wishlist-book="${escapeHtml(key)}" aria-pressed="${wished}" aria-label="${wished ? "Fjern" : "Tilføj"} ${escapeHtml(book.title)} ${wished ? "fra" : "til"} huskelisten">${wished ? "♥" : "♡"}</button></div></div>`; }).join("");
   $("[data-match-books]").querySelectorAll(".match-book").forEach((button) => button.addEventListener("click", () => {
     const book = matches.find((item) => bookKey(item) === button.dataset.readBook);
     if (book?.sourceUrl) window.location.href = book.sourceUrl;
@@ -148,7 +159,6 @@ function renderMatch() {
   $("[data-match-books]").querySelectorAll(".wishlist-book").forEach((button) => button.addEventListener("click", () => {
     const key = button.dataset.wishlistBook; wishlistedIds.has(key) ? wishlistedIds.delete(key) : wishlistedIds.add(key); renderMatch();
   }));
-  $("[data-match-save-note]").textContent = matches.length ? "Bøgerne er gemt sammen med dine tidligere valg. Du kan altid se dem alle igen." : "";
   show("match");
 }
 
@@ -161,13 +171,17 @@ function renderSavedShelf() {
 function renderMatchSavedShelf() {
   const saved = [...savedBooks.values()], shelf = $("[data-match-saved]");
   shelf.hidden = saved.length === 0;
-  shelf.innerHTML = saved.length ? `<button class="match-saved-button" type="button" aria-label="Se dine ${saved.length} gemte bøger fra alle runder"><span class="match-saved-label">Dine gemte bøger (${saved.length})</span><span class="match-saved-list">${saved.map((book) => `<span>${cover(book)}<em>${escapeHtml(book.title)}</em></span>`).join("")}</span><span class="match-saved-all">Se alle</span></button>` : "";
+  const pileLabel = `Du har ${saved.length} ${saved.length === 1 ? "bog" : "bøger"} i bunken`;
+  shelf.innerHTML = saved.length ? `<button class="match-saved-button" type="button" aria-label="${pileLabel}. Se alle bøger i bunken"><span class="match-saved-label">${pileLabel}</span><span class="match-saved-all">Se alle →</span></button>` : "";
   shelf.querySelector("button")?.addEventListener("click", () => renderSavedScreen("match"));
 }
 function renderSavedScreen(returnScreen = "choices") {
   savedReturnScreen = returnScreen;
   const saved = [...savedBooks.values()];
   $("[data-saved-books]").innerHTML = saved.map((book) => `<article>${cover(book)}<strong>${escapeHtml(book.title)}</strong><span>${escapeHtml(bookMeta(book))} · ${pageCount(book)} sider</span></article>`).join("");
+  const allOnWishlist = saved.length > 0 && saved.every((book) => wishlistedIds.has(bookKey(book)));
+  $("[data-save-saved]").textContent = allOnWishlist ? "Alle er på min huskeliste" : "Gem alle til min huskeliste";
+  $("[data-save-saved]").disabled = saved.length === 0 || allOnWishlist;
   show("saved");
 }
 
@@ -199,7 +213,14 @@ function resetFlow() {
 $("[data-start]").addEventListener("click", () => { resetFlow(); startRound(seedQueries); });
 $("[data-next]").addEventListener("click", advanceChoice);
 $("[data-more]").addEventListener("click", showMore);
-$("[data-category]").addEventListener("click", (event) => { const category = event.currentTarget.dataset.category; if (category) window.location.href = `${goSearchBase}${encodeURIComponent(category)}`; });
+$("[data-category]").addEventListener("click", () => {
+  finalCandidates.filter((book) => !matchRemoved.has(bookKey(book))).forEach((book) => wishlistedIds.add(bookKey(book)));
+  renderMatch();
+});
+$("[data-save-saved]").addEventListener("click", () => {
+  savedBooks.forEach((book, key) => wishlistedIds.add(key || bookKey(book)));
+  renderSavedScreen(savedReturnScreen);
+});
 $("[data-saved-back]").addEventListener("click", () => savedReturnScreen === "match" ? renderMatch() : renderRound());
 document.querySelectorAll("[data-back]").forEach((button) => button.addEventListener("click", () => {
   if (currentScreen === "choices" && round === 0) { show("intro"); return; }

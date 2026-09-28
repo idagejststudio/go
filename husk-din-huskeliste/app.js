@@ -1,4 +1,7 @@
-const API_BASE = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
+const API_BASE = new URLSearchParams(location.search).get("api") ||
+  (["localhost", "127.0.0.1"].includes(location.hostname) && location.port !== "8787"
+    ? "http://localhost:8787/api"
+    : "/api");
 // Dette er barnets eksisterende eksempel-huskeliste. Værkerne hentes altid
 // frisk fra GO, så titel, forfatter, format, alder og forside er korrekte.
 const wishList = [
@@ -11,6 +14,7 @@ const wishList = [
 ];
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
+const backgroundFrame = document.querySelector(".page-backdrop iframe");
 let current = null;
 let chosenTime = "";
 
@@ -50,11 +54,20 @@ async function showBook(entry) {
 }
 
 $("[data-another]").addEventListener("click", () => showBook(randomItem(current?.id)));
-$("[data-later]").addEventListener("click", () => {
-  if (!current?.title) return;
-  $('[data-time-book]').textContent = `Gem ${current.title} til et øjeblik, der passer bedre.`;
+function openTimePicker(book = current) {
+  if (!book?.title) return;
+  current = book;
+  chosenTime = "";
+  $$('[data-time]').forEach(choice => choice.setAttribute("aria-pressed", "false"));
+  $('[data-save-time]').disabled = true;
+  $('[data-time-cover]').src = book.coverUrl || "../design-system-reference/assets/imgBookCover.png";
+  $('[data-time-cover]').alt = `Forside til ${book.title}`;
+  $('[data-time-title]').textContent = `Hvornår skal GO! minde dig om ${book.title}?`;
+  $('[data-time-book]').textContent = "Gem bogen til et tidspunkt, der passer godt for dig.";
   showStep("time");
-});
+}
+
+$("[data-later]").addEventListener("click", () => openTimePicker());
 $("[data-back]").addEventListener("click", () => showStep("nudge"));
 $$('[data-time]').forEach(button => button.addEventListener("click", () => {
   chosenTime = button.dataset.time;
@@ -67,8 +80,24 @@ $("[data-save-time]").addEventListener("click", () => {
   showStep("confirmation");
 });
 function closeDialog() { document.body.classList.add("is-closed"); }
+function openDialog() { document.body.classList.remove("is-closed"); }
 $("[data-close]").addEventListener("click", closeDialog);
 $("[data-scrim]").addEventListener("click", closeDialog);
 $("[data-done]").addEventListener("click", () => { showStep("nudge"); showBook(randomItem(current?.id)); });
 document.addEventListener("keydown", event => { if (event.key === "Escape") closeDialog(); });
+window.addEventListener("message", event => {
+  if (event.source !== backgroundFrame?.contentWindow || event.data?.type !== "open-wishlist-reminder") return;
+  const book = event.data.book;
+  if (!book?.title) return;
+  openDialog();
+  openTimePicker({
+    id: `saved-${book.title}`,
+    title: book.title,
+    author: book.author || "",
+    coverUrl: book.coverUrl,
+    age: "9-15",
+    format: book.format || "E-bog",
+  });
+});
 showBook(randomItem());
+window.setTimeout(openDialog, 3000);

@@ -26,7 +26,7 @@
 
       <section class="screen choice-screen" data-screen="choices" hidden aria-labelledby="choice-title">
         <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
-        <div class="choice-heading"><h1 id="choice-title" data-choice-title>Her er 6 bøger. Fjern dem, du ikke har lyst til.</h1><p data-choice-help>Du bestemmer selv, hvor mange bøger du fjerner.</p></div>
+        <div class="choice-heading"><p class="eyebrow" data-round-label>1 UD AF 3</p><h1 id="choice-title" data-choice-title>Hvilke bøger vil du IKKE læse?</h1><p data-choice-help>Du bestemmer selv, hvor mange bøger du fjerner.</p></div>
         <aside class="saved-shelf" data-saved-shelf hidden></aside>
         <div class="book-choices" data-book-choices></div>
         <p class="selection-status" data-selection-status>6 bøger tilbage</p>
@@ -37,16 +37,15 @@
         <button class="circle-nav previous-circle" type="button" aria-label="Tilbage til valget" data-saved-back>←</button>
         <div class="choice-heading"><p class="eyebrow">DINE GEMTE BØGER</p><h1 id="saved-title">Her er bøgerne, du har gemt</h1><p>Du kan altid vende tilbage til dem senere.</p></div>
         <div class="saved-books" data-saved-books></div>
+        <div class="saved-actions"><button class="primary-action" type="button" data-save-saved>Gem alle til min huskeliste</button></div>
       </section>
 
       <section class="screen match-screen" data-screen="match" hidden aria-labelledby="match-title">
         <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
-        <div class="choice-heading"><p class="eyebrow">DINE VALG</p><h1 id="match-title" data-match-title>Det ser ud til, at venskab og mystik er noget for dig.</h1><p data-match-summary>Tryk på en bog for at begynde at læse den.</p></div>
-        <div class="round-summary" data-round-summary></div>
+        <div class="choice-heading match-heading"><p class="eyebrow">DINE VALG</p><h1 id="match-title" data-match-title>Dit bogmatch</h1><p data-match-summary>Vælg en bog, du har lyst til at læse.</p></div>
         <aside class="match-saved-shelf" data-match-saved hidden></aside>
         <div class="match-books" data-match-books></div>
-        <p class="match-save-note" data-match-save-note></p>
-        <div class="match-actions"><button class="secondary-action" type="button" data-more>Vis mig flere bøger</button><button class="primary-action" type="button" data-category>Gå til kategori</button></div>
+        <div class="match-actions"><button class="secondary-action" type="button" data-more>Vis mig flere bøger</button><button class="primary-action" type="button" data-category>Gem alle til min huskeliste</button></div>
       </section>
     </main>
   </body>

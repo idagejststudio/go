@@ -364,6 +364,15 @@ const recommendationSearches = {
   illustrationer: ["billedbøger"],
   dyr: ["dyr"],
 };
+const recommendationLabels = {
+  humor: "humor",
+  spænding: "spænding",
+  eventyr: "eventyr",
+  venskab: "venskab",
+  fantasy: "magi",
+  illustrationer: "tegninger",
+  dyr: "dyr",
+};
 
 // Curated discovery routes for the book-type experience. The searches are
 // intentionally broad enough to surface a changing catalogue, while each
@@ -372,44 +381,44 @@ const recommendationSearches = {
 const bookTypeProfiles = {
   "Fantasten": {
     shelves: [
-      { title: "Når Fantasten trænger til noget magisk", queries: ["fantasy", "magiske verdener"], reason: "Magi og verdener, hvor alt kan ske" },
-      { title: "Når Fantasten vil rejse langt væk", queries: ["science fiction", "eventyr"], reason: "Fremtid, fjerne planeter og store eventyr" },
+      { title: "Når Fantasten trænger til noget magisk", queries: ["fantasy", "magiske verdener"], reason: "Vi viser den, fordi den har magi og en verden langt væk." },
+      { title: "Når Fantasten vil rejse langt væk", queries: ["science fiction", "eventyr"], reason: "Vi viser den, fordi den byder på fjerne planeter eller et stort eventyr." },
     ],
   },
   "Action-jægeren": {
     shelves: [
-      { title: "Når Action-jægeren har brug for fuld fart", queries: ["action", "spænding"], reason: "Højt tempo, fare og mod" },
-      { title: "Når Action-jægeren er klar til en mission", queries: ["hemmelige agenter", "science fiction"], reason: "Missioner, teknologi og kampen mellem godt og ondt" },
+      { title: "Når Action-jægeren har brug for fuld fart", queries: ["action", "spænding"], reason: "Vi viser den, fordi der er fart, fare og mod." },
+      { title: "Når Action-jægeren er klar til en mission", queries: ["hemmelige agenter", "science fiction"], reason: "Vi viser den, fordi den har en mission og kampen mellem godt og ondt." },
     ],
   },
   "Føle-følesen": {
     shelves: [
-      { title: "Når Føle-følesen har lyst til at mærke det hele", queries: ["kærlighed", "venskab"], reason: "Kærlighed, venskab og store følelser" },
-      { title: "Når Føle-følesen har brug for et varmt kram", queries: ["familie", "sorg"], reason: "Nære familier og historier, der godt må gøre lidt ondt" },
+      { title: "Når Føle-følesen har lyst til at mærke det hele", queries: ["kærlighed", "venskab"], reason: "Vi viser den, fordi den handler om venskab, kærlighed eller store følelser." },
+      { title: "Når Føle-følesen har brug for et varmt kram", queries: ["familie", "sorg"], reason: "Vi viser den, fordi den har familie og følelser, som godt må gøre lidt ondt." },
     ],
   },
   "Mysterieslugeren": {
     shelves: [
-      { title: "Når Mysterieslugeren mangler et spor", queries: ["krimi", "mysterier"], reason: "Mysterier, spor og hemmeligheder" },
-      { title: "Når Mysterieslugeren vil gætte med", queries: ["gåder", "detektiv"], reason: "Hvem-har-gjort-det og skarpe hjerner" },
+      { title: "Når Mysterieslugeren mangler et spor", queries: ["krimi", "mysterier"], reason: "Vi viser den, fordi der er mysterier, spor og hemmeligheder at finde." },
+      { title: "Når Mysterieslugeren vil gætte med", queries: ["gåder", "detektiv"], reason: "Vi viser den, fordi du kan gætte med på, hvem der gjorde det." },
     ],
   },
   "Humoristen": {
     shelves: [
-      { title: "Når Humoristen trænger til et godt grin", queries: ["humor", "sjove bøger"], reason: "Skæve historier og latter" },
-      { title: "Når Humoristen gerne vil have kaos", queries: ["tegneserier", "satire"], reason: "Tegninger, comedy og skøre påfund" },
+      { title: "Når Humoristen trænger til et godt grin", queries: ["humor", "sjove bøger"], reason: "Vi viser den, fordi den er fyldt med skøre ting og grin." },
+      { title: "Når Humoristen gerne vil have kaos", queries: ["tegneserier", "satire"], reason: "Vi viser den, fordi den har tegninger, sjov og skøre påfund." },
     ],
   },
   "Hverdagshelten": {
     shelves: [
-      { title: "Når Hverdagshelten vil genkende noget fra sit eget liv", queries: ["realisme", "familie"], reason: "Virkelige liv, familier og relaterbare valg" },
-      { title: "Når Hverdagshelten har brug for en fortælling tæt på", queries: ["skole", "venskab"], reason: "Hverdag, venskaber og ting, man kender" },
+      { title: "Når Hverdagshelten vil genkende noget fra sit eget liv", queries: ["realisme", "familie"], reason: "Vi viser den, fordi den handler om familie og valg, man kan kende fra livet." },
+      { title: "Når Hverdagshelten har brug for en fortælling tæt på", queries: ["skole", "venskab"], reason: "Vi viser den, fordi den handler om skole, venner og en helt almindelig hverdag." },
     ],
   },
   "Vidensslugeren": {
     shelves: [
-      { title: "Når Vidensslugeren vil opdage noget nyt", queries: ["fakta", "videnskab"], reason: "Virkeligheden, videnskab og nye opdagelser" },
-      { title: "Når Vidensslugeren vil lave noget selv", queries: ["gør det selv", "opfindelser"], reason: "DIY, idéer og ting, der kan prøves af" },
+      { title: "Når Vidensslugeren vil opdage noget nyt", queries: ["fakta", "videnskab"], reason: "Vi viser den, fordi du kan lære om verden og opdage noget nyt." },
+      { title: "Når Vidensslugeren vil lave noget selv", queries: ["gør det selv", "opfindelser"], reason: "Vi viser den, fordi den giver idéer til ting, du selv kan prøve." },
     ],
   },
 };
@@ -485,7 +494,14 @@ async function recommend(id, likes, format = "EBOOK") {
     if (!book.id || book.id === id) return;
     const current = candidates.get(book.id) || { ...book, queryMatches: [], preferenceMatches: [], rankScore: 0 };
     current.queryMatches.push(terms[queryIndex]);
-    if (preferenceMatch) current.preferenceMatches.push(...keys.filter((key) => recommendationSearches[key].some((term) => terms[queryIndex].startsWith(term))));
+    if (preferenceMatch) {
+      for (const key of keys) {
+        if (recommendationSearches[key].some((term) => terms[queryIndex].startsWith(term))
+          && !current.preferenceMatches.includes(key)) {
+          current.preferenceMatches.push(key);
+        }
+      }
+    }
     current.rankScore += Math.max(0, 24 - rank) + (preferenceMatch ? 24 : 0);
     candidates.set(book.id, current);
   }));
@@ -493,6 +509,28 @@ async function recommend(id, likes, format = "EBOOK") {
   const franchiseTerms = normalizeTerms(selected.subjects.slice(0, 1)).filter((term) => term.length >= 5);
   const eligibleCandidates = () => [...candidates.values()]
     .filter((candidate) => !franchiseTerms.some((term) => normalizeTerms([candidate.title])[0]?.includes(term)));
+  const candidateBatch = (books, limit = 8) => {
+    const byPreference = keys.map((key) => books.filter((book) => book.preferenceMatches.includes(key)));
+    const chosen = [];
+    const seen = new Set();
+    const maxRank = Math.max(0, ...byPreference.map((matches) => matches.length));
+    for (let rank = 0; rank < maxRank && chosen.length < limit; rank += 1) {
+      for (const matches of byPreference) {
+        const candidate = matches[rank];
+        if (!candidate || seen.has(candidate.id)) continue;
+        seen.add(candidate.id);
+        chosen.push(candidate);
+        if (chosen.length >= limit) break;
+      }
+    }
+    for (const book of books) {
+      if (chosen.length >= limit) break;
+      if (seen.has(book.id)) continue;
+      seen.add(book.id);
+      chosen.push(book);
+    }
+    return chosen;
+  };
   const readDetails = async (candidateList) => Promise.all(candidateList.map(async (candidate) => {
     try { return { ...candidate, ...(await getWork(candidate.id, candidate.format)) }; }
     catch { return candidate; }
@@ -509,8 +547,28 @@ async function recommend(id, likes, format = "EBOOK") {
       && (candidateAge[1] <= sourceAge[0] || candidateAge[0] >= sourceAge[1]);
     return { ...book, shared, ageMismatch, score: book.rankScore + shared.length * 16 + (sameAge ? 12 : 0) };
   }).filter((book) => isInTargetAge(book.age) && !book.ageMismatch).sort((a, b) => b.score - a.score);
-  let details = await readDetails(eligibleCandidates().slice(0, 8));
+  let details = await readDetails(candidateBatch(eligibleCandidates()));
   let ranked = rankDetails(details);
+  const checkedCandidateIds = new Set(details.map((book) => book.id));
+  // Search pages are ordered by popularity, so the first books for one
+  // preference may all be outside the target age range. Probe the next
+  // candidates only for preferences that still have no eligible match.
+  for (let round = 0; round < 4; round += 1) {
+    const representedPreferences = new Set(ranked.flatMap((book) => book.preferenceMatches));
+    const missingPreferences = keys.filter((key) => !representedPreferences.has(key));
+    if (!missingPreferences.length) break;
+    const nextCandidates = [];
+    for (const key of missingPreferences) {
+      const candidate = eligibleCandidates().find((book) =>
+        book.preferenceMatches.includes(key) && !checkedCandidateIds.has(book.id));
+      if (!candidate) continue;
+      checkedCandidateIds.add(candidate.id);
+      nextCandidates.push(candidate);
+    }
+    if (!nextCandidates.length) break;
+    details = [...details, ...await readDetails(nextCandidates)];
+    ranked = rankDetails(details);
+  }
   // If preference matches are too narrow after age/franchise filtering, use
   // the source work's genre as a low-priority fallback to fill the shelf.
   const fallbackGenre = selected.genres.find((genre) => genre && !queries.includes(genre)) || selected.genres[0];
@@ -522,12 +580,42 @@ async function recommend(id, likes, format = "EBOOK") {
     ranked = rankDetails(details);
   }
 
+  // Give each selected preference a chance to lead one recommendation. Some
+  // preferences may have fewer eligible catalogue matches, so assign those
+  // first to avoid a broad category taking the only match for a narrower one.
+  const usedIds = new Set();
+  const preferenceCounts = new Map(keys.map((key) => [key, 0]));
+  const preferenceResults = keys
+    .map((key) => ({ key, matches: ranked.filter((book) => book.preferenceMatches.includes(key)) }))
+    .sort((a, b) => a.matches.length - b.matches.length);
+  const chosen = [];
+  for (const { key, matches } of preferenceResults) {
+    const book = matches.find((candidate) => !usedIds.has(candidate.id));
+    if (!book) continue;
+    usedIds.add(book.id);
+    preferenceCounts.set(key, preferenceCounts.get(key) + 1);
+    chosen.push({ ...book, recommendationPreference: key });
+  }
+  // Keep the visible order aligned with the order in which the child picked
+  // preferences, then fill any remaining places with the strongest matches.
+  const preferenceOrder = new Map(keys.map((key, index) => [key, index]));
+  chosen.sort((a, b) => preferenceOrder.get(a.recommendationPreference) - preferenceOrder.get(b.recommendationPreference));
+  for (const book of ranked) {
+    if (chosen.length >= 3) break;
+    if (usedIds.has(book.id)) continue;
+    const matchedPreferences = book.preferenceMatches.filter((key) => preferenceCounts.has(key));
+    const recommendationPreference = matchedPreferences.sort((a, b) => preferenceCounts.get(a) - preferenceCounts.get(b))[0] || null;
+    if (recommendationPreference) preferenceCounts.set(recommendationPreference, preferenceCounts.get(recommendationPreference) + 1);
+    usedIds.add(book.id);
+    chosen.push({ ...book, recommendationPreference });
+  }
+
   return {
     selected,
-    results: ranked.slice(0, 3).map((book) => ({
+    results: chosen.map((book) => ({
       ...book,
-      reason: book.preferenceMatches[0]
-        ? `Fundet via ${recommendationSearches[book.preferenceMatches[0]][0]}`
+      reason: book.recommendationPreference
+        ? `Har masser af ${recommendationLabels[book.recommendationPreference] || book.recommendationPreference}`
         : book.shared[0] ? `Har også ${book.shared[0].toLocaleLowerCase("da")}` : "Et nyt fund til din læseliste",
     })),
     source: "public-go-catalog",

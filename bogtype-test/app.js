@@ -1,7 +1,10 @@
 const A = "../design-system-reference/assets/";
-const API_BASE = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
+const API_BASE = new URLSearchParams(location.search).get("api") ||
+  (["localhost", "127.0.0.1"].includes(location.hostname) && location.port !== "8787"
+    ? "http://localhost:8787/api"
+    : "/api");
 const books = [
-  ["Ormehullet", "Susanna Hartmann", "imgImage202.png"], ["Jagten på sandheden", "Kasper Hoff", "imgImage203.png"], ["Nedtælling", "Teri Terry", "imgImage48.png"], ["Brødrene Løvehjerte", "Astrid Lindgren", "imgImage193.png"], ["Mio, min Mio", "Astrid Lindgren", "imgImage192.png"], ["Pippi Langstrømpe", "Astrid Lindgren", "imgImage213.png"], ["Ronja Røverdatter", "Astrid Lindgren", "imgImage214.png"], ["Lotte fra Spektakelmagergade", "Astrid Lindgren", "imgImage219.png"]
+  ["Ormehullet", "Susanna Hartmann", "imgImage202.png"], ["Jagten på sandheden", "Kasper Hoff", "imgImage203.png"], ["Nedtælling", "Teri Terry", "imgImage48.png"], ["Den sultne larve Aldrigmæt", "Eric Carle", "imgImage193.png"], ["Mio, min Mio", "Astrid Lindgren", "imgImage192.png"], ["Pippi Langstrømpe", "Astrid Lindgren", "imgImage213.png"], ["Ronja Røverdatter", "Astrid Lindgren", "imgImage214.png"], ["Lotte fra Spektakelmagergade", "Astrid Lindgren", "imgImage219.png"]
 ];
 const types = {
   Fantasten:{icon:"✦", color:"var(--sky)", heading:"Virkeligheden er overvurderet.", copy:"Den virkelige verden er fin nok … men hvorfor nøjes? Du vil have magi, mærkelige væsner, vilde verdener og ting, der måske kan ske i virkeligheden.", power:"Du kan forsvinde ind i en anden verden uden overhovedet at rejse dig fra sofaen.", shelf:"Når Fantasten har trængt for meget af en kedelig hverdag", shelfTwo:"Når Fantasten er klar til en rejse, langt langt væk", books:[0,1,2,3]},
@@ -12,15 +15,13 @@ const types = {
   Hverdagshelten:{icon:"☀",color:"var(--lemon)",heading:"Det vildeste sker lige midt i hverdagen.",copy:"Du kan godt lide historier om mennesker, der føles ægte – og store ting, der starter med små valg.",power:"Du opdager det særlige i det helt almindelige.",shelf:"Når Hverdagshelten vil læse noget, der føles ægte",books:[5,6,7,3]},
   Vidensslugeren:{icon:"⌕",color:"var(--lavender)",heading:"Jeg har lige ét spørgsmål mere…",copy:"Du vil vide hvordan, hvorfor og hvad der mon sker, hvis man lige undersøger det lidt mere.",power:"Du gør nysgerrighed til en superkraft.",shelf:"Når Vidensslugeren vil opdage noget nyt",books:[1,0,2,4]}
 };
-const typeCatalog = new Map();
 const questions = [
-  {q:"Du finder en dør, du aldrig har set før. Hvad håber du, der er bag den?",a:[["Et rum fyldt med spor", "Mysterieslugeren"],["En hemmelig tunnel, der fører langt væk","Fantasten"],["Noget ingen andre har opdaget før","Vidensslugeren"],["En anden verden, hvor alt kan ske","Fantasten"],["Et sted, der minder om mit eget liv","Hverdagshelten"]]},
-  {q:"Hvem vil du vælge som hovedperson?",visual:true,a:[["En rumrejsende","Fantasten","🧑‍🚀","var(--lavender)"],["En superagent","Action-jægeren","🦸","var(--mint)"],["En sportsstjerne","Action-jægeren","⚽","var(--sky)"],["En almindelig person","Hverdagshelten","🧑","var(--lemon)"]]},
-  {q:"Du får en superkraft. Hvilken vælger du?",a:[["Du kan altid se, når nogen lyver","Mysterieslugeren"],["Du kan rejse til verdener, der ikke findes","Fantasten"],["Du kan altid mærke, hvordan andre har det","Føle-følesen"],["Du kan løbe hurtigere end en bil","Action-jægeren"],["Du kan få hvem som helst til at grine","Humoristen"],["Du kan gøre en helt almindelig dag bedre","Hverdagshelten"]]},
-  {q:"Din ven siger: “Jeg har noget VILDT at fortælle dig.” Hvad håber du, det er?",a:[["En hemmelighed om nogen, I kender","Føle-følesen"],["Noget vildt, I skal gøre sammen","Action-jægeren"],["At de har opdaget noget, der burde være umuligt","Vidensslugeren"],["Noget virkelig pinligt, der lige er sket","Humoristen"],["Noget mystisk, de har opdaget","Mysterieslugeren"],["Noget fra deres hverdag, jeg kan genkende","Hverdagshelten"]]},
-  {q:"Hvilket sted ville du helst være i en historie?",visual:true,a:[["I et hjem med familiedrama","Føle-følesen","🏠","var(--lemon)"],["En fremmed planet","Fantasten","🪐","var(--sky)"],["Et gammelt slot","Mysterieslugeren","🏰","var(--lavender)"],["En almindelig by","Hverdagshelten","🏙️","var(--mint)"]]},
-  {q:"Hvad er det BEDSTE ved at begynde på en ny bog?",a:[["At opdage en helt ny verden","Fantasten"],["At jeg ikke ved, hvad der kommer til at ske","Mysterieslugeren"],["At møde nogen, jeg kommer til at holde af","Føle-følesen"],["At den får mig til at trække på smilebåndet","Humoristen"],["At opdage noget nyt","Vidensslugeren"],["At den handler om noget, jeg kender fra livet","Hverdagshelten"]]},
-  {q:"Du får lov til at bestemme slutningen. Hvad vælger du?",a:[["Helten klarer det i ALLERSIDSTE sekund","Action-jægeren"],["Det hele ender på den mest åndssvage måde","Humoristen"],["Den sidste side afslører, at alt ikke var, som vi troede","Mysterieslugeren"],["De personer, der har været uvenner, finder hinanden igen","Føle-følesen"],["Den føles ægte – også selv om den ikke er perfekt","Hverdagshelten"]]}
+  {q:"Du finder en hemmelig dør. Hvad er bag den?",a:[["Spor og ledetråde", "Mysterieslugeren"],["En tunnel til et nyt sted","Fantasten"],["En ny opdagelse","Vidensslugeren"],["En verden med magi","Fantasten"],["Et sted som mit liv","Hverdagshelten"]]},
+  {q:"Hvem er hovedpersonen?",visual:true,a:[["En rumfarer","Fantasten","🧑‍🚀","var(--lavender)"],["En superagent","Action-jægeren","🦸","var(--mint)"],["En sportsstjerne","Action-jægeren","⚽","var(--sky)"],["En almindelig person","Hverdagshelten","🧑","var(--lemon)"]]},
+  {q:"Du får en superkraft. Hvilken?",a:[["Se når nogen lyver","Mysterieslugeren"],["Rejse til nye verdener","Fantasten"],["Mærke andres følelser","Føle-følesen"],["Løbe hurtigere end en bil","Action-jægeren"],["Få alle til at grine","Humoristen"],["Gøre en svær dag bedre","Hverdagshelten"]]},
+  {q:"Din ven har nyheder. Hvad håber du?",a:[["En hemmelighed om en ven","Føle-følesen"],["En vild plan for os","Action-jægeren"],["En umulig opdagelse","Vidensslugeren"],["Noget pinligt og sjovt","Humoristen"],["Et mærkeligt spor","Mysterieslugeren"],["Noget jeg kan genkende","Hverdagshelten"]]},
+  {q:"Hvor vil du være i en historie?",visual:true,a:[["Et hjem med drama","Føle-følesen","🏠","var(--lemon)"],["En fremmed planet","Fantasten","🪐","var(--sky)"],["Et gammelt slot","Mysterieslugeren","🏰","var(--lavender)"],["En almindelig by","Hverdagshelten","🏙️","var(--mint)"]]},
+  {q:"Hvad er bedst ved en ny bog?",a:[["En helt ny verden","Fantasten"],["Ikke at kende slutningen","Mysterieslugeren"],["At møde en person, jeg holder af","Føle-følesen"],["At grine højt","Humoristen"],["At lære noget nyt","Vidensslugeren"],["At kunne genkende livet","Hverdagshelten"]]}
 ];
 let step=0, picks=[], isAdvancing=false, catalogLoadId=0;
 const $ = s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
@@ -46,7 +47,17 @@ const escapeHTML = value => String(value || "").replace(/[&<>"']/g, char => ({"&
 
 function localBook(index) {
   const [title, author, cover] = books[index];
-  return { title, author, coverUrl: A + cover, format: "E-bog", reason: "Et udvalgt læsetip" };
+  const reasons = [
+    "En gåde med spor, venskab og mod.",
+    "Du kan gætte med, mens sporene dukker op.",
+    "Højt tempo og en kamp mod tiden.",
+    "En fin fortælling om at vokse og forandre sig.",
+    "En magisk rejse med mod og venskab.",
+    "En modig pige, der gør hverdagen til et eventyr.",
+    "Venskab, mod og et stort eventyr.",
+    "En sjov hverdagshistorie med masser af fantasi."
+  ];
+  return { title, author, coverUrl: A + cover, format: "E-bog", reason: reasons[index] };
 }
 
 function renderTypeBook(book) {
@@ -67,10 +78,9 @@ async function loadCatalog(name, loadId) {
   state?.classList.remove('is-fallback');
   if (state) state.textContent = 'Finder bøger, der passer til din bogtype…';
   try {
-    const catalog = typeCatalog.get(name) || await fetch(`${API_BASE}/bogtype?persona=${encodeURIComponent(name)}`).then(async response => {
+    const catalog = await fetch(`${API_BASE}/bogtype?persona=${encodeURIComponent(name)}`, { cache: "no-store" }).then(async response => {
       if (!response.ok) throw new Error('GO API unavailable');
       const data = await response.json();
-      typeCatalog.set(name, data);
       return data;
     });
     if (loadId !== catalogLoadId) return;

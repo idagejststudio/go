@@ -1,4 +1,7 @@
-const apiBase = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
+const apiBase = new URLSearchParams(location.search).get("api") ||
+  (["localhost", "127.0.0.1"].includes(location.hostname) && location.port !== "8787"
+    ? "http://localhost:8787/api"
+    : "/api");
 const fallbackCovers = "../design-system-reference/assets/";
 const preferences = [
   ["humor", "Humoren", "humoren"],
@@ -49,8 +52,10 @@ let displayedBooks = [];
 let displayedTotal = null;
 let searchRequest = 0;
 let recommendationRequest = 0;
+let selectionRequest = 0;
 let searchTimer;
 let searchController;
+let selectionController;
 
 const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -82,7 +87,7 @@ async function api(path, options = {}) {
 function renderSearchResults(books) {
   displayedBooks = books;
   suggestionBox.innerHTML = books.length
-    ? `<p class="catalog-count">${books.length} digitale muligheder${displayedTotal ? ` blandt ${displayedTotal} katalogresultater` : ""}</p>${books.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${index}">${bookCard(book)}</button>`).join("")}`
+    ? `<p class="catalog-count">${books.length} digitale muligheder${displayedTotal ? ` blandt ${displayedTotal} katalogresultater` : ""}</p>${books.slice(0, 8).map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${index}">${bookCard(book)}</button>`).join("")}`
     : `<p class="no-suggestions">Vi fandt ikke digitale bøger eller lydbøger med den søgning. Prøv et andet ord.</p>`;
   suggestionBox.hidden = false;
   suggestionBox.querySelectorAll("[data-suggestion]").forEach((button) => {
@@ -105,6 +110,8 @@ async function searchBooks(query) {
   searchController = new AbortController();
   showMessage("Søger i eReolen GO…");
   try {
+    // Search only returns catalogue items whose age metadata has been checked
+    // against the experience's target age range.
     const result = await api(`/search?q=${encodeURIComponent(normalized)}`, { signal: searchController.signal });
     if (request !== searchRequest) return;
     displayedTotal = result.total;
@@ -116,11 +123,32 @@ async function searchBooks(query) {
 
 async function selectBook(book) {
   if (!book) return;
-  selectedBook = book;
-  searchInput.value = book.title;
-  suggestionBox.hidden = true;
-  showStep(2);
-  title.focus({ preventScroll: true });
+  const request = ++selectionRequest;
+  selectionController?.abort();
+  selectionController = new AbortController();
+  suggestionBox.querySelectorAll("[data-suggestion]").forEach((button) => { button.disabled = true; });
+  showMessage("Henter bogoplysninger…");
+  try {
+    const details = await api(`/work?id=${encodeURIComponent(book.id)}&type=${encodeURIComponent(book.format || "EBOOK")}`, { signal: selectionController.signal });
+    if (request !== selectionRequest) return;
+    selectedBook = { ...book, ...details };
+    searchInput.value = book.title;
+    suggestionBox.hidden = true;
+    showStep(2);
+    title.focus({ preventScroll: true });
+  } catch (error) {
+    if (request !== selectionRequest || error.name === "AbortError") return;
+    if (error.message.includes("aldersgruppen")) {
+      renderSearchResults(displayedBooks.filter((candidate) => candidate.id !== book.id));
+      return;
+    }
+    renderSearchResults(displayedBooks);
+    const notice = document.createElement("p");
+    notice.className = "no-suggestions";
+    notice.setAttribute("role", "status");
+    notice.textContent = "Vi kunne ikke hente bogens oplysninger. Prøv at vælge den igen.";
+    suggestionBox.prepend(notice);
+  }
 }
 
 function renderPopularUniverses() {
@@ -215,6 +243,8 @@ document.querySelector("[data-search-form]").addEventListener("submit", (event) 
 searchInput.addEventListener("input", () => {
   searchRequest += 1;
   searchController?.abort();
+  selectionRequest += 1;
+  selectionController?.abort();
   if (selectedBook && searchInput.value.trim() !== selectedBook.title) {
     selectedBook = null;
     pickedBox.hidden = true;
@@ -222,13 +252,16 @@ searchInput.addEventListener("input", () => {
     nextButton.disabled = true;
   }
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => searchBooks(searchInput.value), 450);
+  searchTimer = setTimeout(() => searchBooks(searchInput.value), 250);
 });
 document.addEventListener("click", (event) => { if (!event.target.closest(".book-search-wrap")) suggestionBox.hidden = true; });
 nextButton.addEventListener("click", () => { if (currentStep === 1 && selectedBook) showStep(2); else if (currentStep === 2 && selectedPreferences.size) showStep(3); });
 function resetFlow() {
   searchRequest += 1;
   recommendationRequest += 1;
+  selectionRequest += 1;
+  searchController?.abort();
+  selectionController?.abort();
   clearTimeout(searchTimer);
   selectedBook = null;
   selectedPreferences.clear();

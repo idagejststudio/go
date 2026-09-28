@@ -99,7 +99,7 @@ body { min-width: 320px; overflow: hidden; }
 .recommendation-card:hover .cover img, .recommendation-card:focus-within .cover img { transform: scale(1.035); }
 .recommendation-card .book-title { margin: 9px 0 2px; font-size: 14px; line-height: 1.25; font-weight: 600; }
 .recommendation-card .book-author { color: #52615a; font-size: 11px; }
-.recommendation-card .match-reason { margin-top: 6px; color: #52615a; font-size: 10px; line-height: 1.35; }
+.recommendation-card .match-reason { display: inline-flex; align-self: flex-start; align-items: center; max-width: 100%; margin-top: 9px; padding: 6px 10px; border: 1px solid #b7c9b8; border-radius: 999px; color: var(--feature-green); background: #eff4e9; font-size: 12px; font-weight: 650; line-height: 1.25; }
 .results-loading, .results-empty { grid-column: 1 / -1; color: #52615a; text-align: center; font-size: 13px; }
 .save-book { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--ink); border-radius: 50%; color: var(--ink); background: var(--white); cursor: pointer; }
 .save-book[aria-pressed="true"] { color: #a42f43; }
@@ -141,6 +141,7 @@ body { min-width: 320px; overflow: hidden; }
   .recommendation-card .cover img { max-width: 88px; max-height: 140px; }
   .recommendation-card .book-title { font-size: 12px; }
   .recommendation-card .book-author { font-size: 10px; }
+  .recommendation-card .match-reason { padding: 5px 7px; font-size: 10px; }
 }
 
 @media (max-width: 390px) {
@@ -152,6 +153,7 @@ body { min-width: 320px; overflow: hidden; }
   .recommendation-card .cover { height: 135px; }
   .recommendation-card .cover img { max-width: 76px; max-height: 120px; }
   .recommendation-card .book-title { font-size: 11px; }
+  .recommendation-card .match-reason { padding: 5px 6px; font-size: 9px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

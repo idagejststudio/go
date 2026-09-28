@@ -1,5 +1,8 @@
 const A = "../design-system-reference/assets/";
-const API_BASE = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
+const API_BASE = new URLSearchParams(location.search).get("api") ||
+  (["localhost", "127.0.0.1"].includes(location.hostname) && location.port !== "8787"
+    ? "http://localhost:8787/api"
+    : "/api");
 const questions = [
   { question: "Vælg en snack.", prompt: "Vi forklarer ikke hvorfor.", answers: [["🍿", "Popcorn", "humor"], ["🍉", "Vandmelon", "hygge"], ["🌶️", "Stærke chips", "spænding"], ["🍫", "Chokolade", "fantasi"], ["🍕", "Kold pizza fra i går", "mysterie"]] },
   { question: "Hvilken knap trykker du på?", prompt: "Der findes kun ét helt forkert svar. Måske.", answers: [["🔴", "TRYK IKKE", "spænding"], ["🟢", "GRATIS SLIK", "humor"], ["🟣", "???", "fantasi"], ["🔵", "GØR ALT NORMALT IGEN", "hygge"]] },
@@ -9,11 +12,11 @@ const questions = [
   { question: "Hvor meget kaos kan du klare lige nu?", prompt: "Svar ærligt. Dit tæppe dømmer dig ikke.", answers: [["😌", "0 % – jeg har fået nok for i dag", "hygge"], ["🙂", "Lidt kan jeg godt klare", "humor"], ["😈", "Giv mig problemer", "spænding"], ["🔥", "ØDELÆG ALT", "fantasi"]] }
 ];
 const moodProfiles = {
-  spænding: { persona: "Action-jægeren", intro: "Du virker klar på højt tempo, fare og historier, hvor der sker noget med det samme." },
-  mysterie: { persona: "Mysterieslugeren", intro: "Du samlede spor, hemmelige døre og ting, der ikke helt stemmer." },
-  fantasi: { persona: "Fantasten", intro: "Du valgte det ukendte. Her er verdener, magi og eventyr uden helt almindelige regler." },
-  humor: { persona: "Humoristen", intro: "Du har en ret sund appetit på skøre idéer, kaos og ting, der er lidt for meget." },
-  hygge: { persona: "Hverdagshelten", intro: "Du valgte tryghed, venskab og et godt sted at lande. Her er historier tæt på livet." },
+  spænding: { persona: "Action-jægeren", interest: "fart, fare og ting, der ikke går helt efter planen" },
+  mysterie: { persona: "Mysterieslugeren", interest: "hemmeligheder, spor og ting, der ikke helt stemmer" },
+  fantasi: { persona: "Fantasten", interest: "magi, mærkelige verdener og det ukendte" },
+  humor: { persona: "Humoristen", interest: "skøre idéer, grin og et passende niveau af kaos" },
+  hygge: { persona: "Hverdagshelten", interest: "venskab, tryghed og historier, der føles tæt på livet" },
 };
 const fallbackCovers = ["imgImage202.png", "imgImage203.png", "imgImage193.png", "imgImage214.png"];
 let step = 0, answers = [], advanceId, thinkingId, thinkingStageIds = [], catalogPromise, isAdvancing = false;
@@ -91,19 +94,25 @@ function showThinking() {
   thinkingId = window.setTimeout(() => renderResults(mood), 4000);
 }
 function fallbackCatalog(profile) {
-  return { shelves: [{ title: "Et par gode steder at starte", query: "bøger", reason: profile.intro, books: [
-    { title: "Ormehullet", author: "Merlin P. Mann", coverUrl: `${A}imgImage202.png`, sourceUrl: "../design-system-reference/vaerk.html", format: "EBOOK" },
-    { title: "Brødrene Løvehjerte", author: "Astrid Lindgren", coverUrl: `${A}imgImage193.png`, sourceUrl: "../design-system-reference/vaerk.html", format: "EBOOK" },
+  return { shelves: [{ title: "Et par gode steder at starte", query: "bøger", reason: profile.interest, books: [
+    { title: "20.02.2020", author: "Lars Konzak", coverUrl: `${A}imgImage202.png`, sourceUrl: "../design-system-reference/vaerk.html", format: "EBOOK" },
+    { title: "Den sultne larve Aldrigmæt", author: "Eric Carle", coverUrl: `${A}imgImage193.png`, sourceUrl: "../design-system-reference/vaerk.html", format: "EBOOK" },
     { title: "Ronja Røverdatter", author: "Astrid Lindgren", coverUrl: `${A}imgImage214.png`, sourceUrl: "../design-system-reference/vaerk.html", format: "AUDIO_BOOK_ONLINE" },
   ] }] };
 }
 function nextUnused(books, used) {
   return books.find(book => book?.id ? !used.has(book.id) : !used.has(book?.title));
 }
-function pickCard({ label, line, book, style }, index) {
+function pickWhy(label, book, profile) {
+  const shelfReason = String(book.reason || profile.interest).replace(/[.]$/, "").toLocaleLowerCase("da");
+  if (label === "DEN SIKRE") return `Dine svar pegede på ${profile.interest}. Den her har ${shelfReason}, så den er et virkelig godt sted at begynde.`;
+  if (label === "DEN LIDT MÆRKELIGE") return `Den rammer også ${profile.interest}, men på en mere overraskende måde. Måske er det præcis derfor, den bliver svær at slippe.`;
+  return `Den kom frem, fordi den har noget af det, du virkede nysgerrig på: ${shelfReason}. Ikke det oplagte valg – men et spændende et.`;
+}
+function pickCard({ label, line, book, style, why }, index) {
   const cover = book.coverUrl || `${A}${fallbackCovers[index % fallbackCovers.length]}`;
   const href = book.sourceUrl || "https://go.bibliotek.kk.dk/search";
-  return `<a class="result-pick ${style}" href="${escapeHTML(href)}" target="_blank" rel="noopener"><div class="pick-intro"><span class="pick-stamp">${label}</span><p class="pick-line">${line}</p></div><div class="pick-cover"><img src="${escapeHTML(cover)}" alt="Forside til ${escapeHTML(book.title)}" /></div><div class="pick-meta"><h2>${escapeHTML(book.title)}</h2><p>Af ${escapeHTML(book.author || "ukendt forfatter")}</p><span>${escapeHTML(book.reason || "Fundet i eReolen GO!-kataloget")}</span></div></a>`;
+  return `<a class="result-pick ${style}" href="${escapeHTML(href)}" target="_blank" rel="noopener"><div class="pick-intro"><span class="pick-stamp">${label}</span><p class="pick-line">${line}</p></div><div class="pick-cover"><img src="${escapeHTML(cover)}" alt="Forside til ${escapeHTML(book.title)}" /></div><div class="pick-meta"><h2>${escapeHTML(book.title)}</h2><p>Af ${escapeHTML(book.author || "ukendt forfatter")}</p><span>${escapeHTML(why)}</span></div></a>`;
 }
 async function renderResults(mood) {
   const profile = moodProfiles[mood];
@@ -111,7 +120,7 @@ async function renderResults(mood) {
   try { catalog = await catalogPromise; }
   catch { catalog = fallbackCatalog(profile); }
   if (!$('.idk-thinking').hidden) {
-    $('[data-result-note]').textContent = profile.intro;
+    $('[data-result-note]').textContent = `Quizzen stillede skøre spørgsmål, men dine svar afslørede noget: Du foretrækker ${profile.interest}. Derfor tror vi, at de her tre bøger er noget for dig.`;
     const shelves = catalog.shelves.filter(shelf => shelf.books?.length).slice(0, 2);
     const firstShelf = shelves[0]?.books || [];
     const secondShelf = shelves[1]?.books || [];
@@ -126,6 +135,7 @@ async function renderResults(mood) {
       { label: "DEN LIDT MÆRKELIGE", line: "Stol på os.", book: weird, style: "pick-weird" },
       { label: "WILDCARD", line: "Den her havde du ALDRIG selv fundet.", book: wildcard, style: "pick-wild" },
     ].filter(pick => pick.book);
+    picks.forEach(pick => { pick.why = pickWhy(pick.label, pick.book, profile); });
     $('[data-picks]').innerHTML = picks.map(pickCard).join("");
     show('results');
   }
