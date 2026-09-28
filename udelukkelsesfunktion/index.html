@@ -26,11 +26,11 @@
 
       <section class="screen choice-screen" data-screen="choices" hidden aria-labelledby="choice-title">
         <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
-        <div class="choice-heading"><h1 id="choice-title" data-choice-title>Fjern de 3 bøger, du mindst vil læse.</h1><p data-choice-help>Klik på en bog for at fjerne den</p></div>
+        <div class="choice-heading"><h1 id="choice-title" data-choice-title>Her er 6 bøger. Fjern dem, du ikke har lyst til.</h1><p data-choice-help>Du bestemmer selv, hvor mange bøger du fjerner.</p></div>
         <aside class="saved-shelf" data-saved-shelf hidden></aside>
         <div class="book-choices" data-book-choices></div>
-        <p class="selection-status" data-selection-status>Vælg 3 bøger</p>
-        <button class="circle-nav next-circle" type="button" aria-label="Fortsæt" data-next disabled>→</button>
+        <p class="selection-status" data-selection-status>6 bøger tilbage</p>
+        <button class="circle-nav next-circle" type="button" aria-label="Fortsæt" data-next>→</button>
       </section>
 
       <section class="screen saved-screen" data-screen="saved" hidden aria-labelledby="saved-title">
@@ -39,26 +39,14 @@
         <div class="saved-books" data-saved-books></div>
       </section>
 
-      <section class="screen length-screen" data-screen="length" hidden aria-labelledby="length-title">
-        <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
-        <div class="choice-heading"><h1 id="length-title">Her er bøgerne, du ikke fjernede.<br />Bliver nogen for korte eller for lange?</h1><p>Klik på en bog for at fjerne den</p></div>
-        <div class="book-choices detail-choices" data-length-choices></div>
-        <p class="selection-status" data-length-status>Du kan fjerne lige så mange, du vil</p>
-        <button class="circle-nav next-circle" type="button" aria-label="Se mit match" data-length-next>→</button>
-      </section>
-
       <section class="screen match-screen" data-screen="match" hidden aria-labelledby="match-title">
         <button class="circle-nav previous-circle" type="button" aria-label="Gå tilbage" data-back>←</button>
-        <div class="choice-heading"><p class="eyebrow">DET HAR DINE VALG TIL FÆLLES</p><h1 id="match-title" data-match-title>Det ser ud til, at venskab og mystik er noget for dig.</h1><p>Vil du læse en af dem – eller lede videre?</p></div>
+        <div class="choice-heading"><p class="eyebrow">DINE VALG</p><h1 id="match-title" data-match-title>Det ser ud til, at venskab og mystik er noget for dig.</h1><p data-match-summary>Tryk på en bog for at begynde at læse den.</p></div>
+        <div class="round-summary" data-round-summary></div>
+        <aside class="match-saved-shelf" data-match-saved hidden></aside>
         <div class="match-books" data-match-books></div>
-        <div class="match-actions"><button class="secondary-action" type="button" data-more>Vis mig flere bøger</button><button class="primary-action" type="button" data-pick disabled>Prøv bog</button></div>
-      </section>
-
-      <section class="screen success-screen" data-screen="success" hidden aria-labelledby="success-title">
-        <div class="success-card" data-success-card></div>
-        <h1 id="success-title">Hurra!</h1>
-        <p>Så lykkedes det at finde en bog, selvom du ikke vidste, hvad du havde lyst til.</p>
-        <button class="secondary-action" type="button" data-restart>Læs bog</button>
+        <p class="match-save-note" data-match-save-note></p>
+        <div class="match-actions"><button class="secondary-action" type="button" data-more>Vis mig flere bøger</button><button class="primary-action" type="button" data-category>Gå til kategori</button></div>
       </section>
     </main>
   </body>

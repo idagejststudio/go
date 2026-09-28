@@ -1,23 +1,40 @@
-const assetRoot = "../design-system-reference/assets/";
-const apiBase = "http://localhost:8787/api";
-const books = [
-  { title: "Pippi Langstrømpe", author: "Astrid Lindgren", year: "2008", cover: "imgImage213.png", traits: ["Sjov", "Personerne", "Tegningerne"] },
-  { title: "Ronja Røverdatter", author: "Astrid Lindgren", year: "2008", cover: "imgImage214.png", traits: ["Der sker virkelig meget", "Personerne", "Universet", "Spændingen"] },
-  { title: "Lotte fra Spektakelmagergade", author: "Astrid Lindgren", year: "2016", cover: "imgImage219.png", traits: ["Sjov", "Personerne", "Tegningerne"] },
-  { title: "Brødrene Løvehjerte", author: "Astrid Lindgren", year: "2010", cover: "imgImage193.png", traits: ["Der sker virkelig meget", "Universet", "Spændingen"] },
-  { title: "Mio, min Mio", author: "Astrid Lindgren", year: "2010", cover: "imgImage192.png", traits: ["Personerne", "Tegningerne", "Universet", "Spændingen"] },
-  { title: "Vi på Krageøen", author: "Astrid Lindgren", year: "2011", cover: "imgImage43.png", traits: ["Sjov", "Personerne", "Universet"] },
-];
-let availableBooks = [...books];
+const apiBase = "http://127.0.0.1:8787/api";
+const fallbackCovers = "../design-system-reference/assets/";
 const preferences = [
-  ["Sjov", "humoren"],
-  ["Der sker virkelig meget", "at der sker virkelig meget"],
-  ["Personerne", "personerne"],
-  ["Tegningerne", "tegningerne"],
-  ["Universet", "universet"],
-  ["Spændingen", "spændingen"],
+  ["humor", "Humoren", "humoren"],
+  ["spænding", "Spændingen", "spændingen"],
+  ["eventyr", "Eventyret", "eventyret"],
+  ["venskab", "Venskabet", "venskabet"],
+  ["fantasy", "Den magiske verden", "den magiske verden"],
+  ["illustrationer", "Tegningerne", "tegningerne"],
+  ["dyr", "Dyrene", "dyrene"],
 ];
-const popularTitles = ["Pippi Langstrømpe", "Ronja Røverdatter", "Lotte fra Spektakelmagergade", "Vi på Krageøen"];
+const popularUniverses = [
+  {
+    query: "Harry Potter",
+    label: "Harry Potter",
+    title: "Harry Potter og De Vises Sten",
+    coverUrl: "https://fbiinfo-present.dbc.dk/images/P-3GKMRrSD2B9VGeQD7lUQ/120px!AQxApiunQgqPUYgxll-Fm-maexDb3xixBHyxDFVxh0zxww",
+  },
+  {
+    query: "Ternet Ninja",
+    label: "Ternet Ninja",
+    title: "Ternet Ninja",
+    coverUrl: "https://fbiinfo-present.dbc.dk/images/twfTHgJhSdKKKIj8FjAGcw/120px!AQwURtkom4sQH-TNPrjA1vEChOBaTbSjxamm6UFolYvzyw",
+  },
+  {
+    query: "Pippi Langstrømpe",
+    label: "Pippi Langstrømpe",
+    title: "Pippi Langstrømpe går om bord",
+    coverUrl: "https://fbiinfo-present.dbc.dk/images/jqli-S7CT6KYYsH__ZQwXg/120px!AQxYIDqX3r4QJFGuD6a0SMKjf6xLvDRIUi6JV9KU7v_IOw",
+  },
+  {
+    query: "Minecraft",
+    label: "Minecraft",
+    title: "Zombiekamp i Minecraft 4",
+    coverUrl: "https://fbiinfo-present.dbc.dk/images/7aVdZ8KARdaIDm5KBpq0tQ/120px!AQyfWdu-nwRFFRSbRsVSEo3fH1D_J9Hq3BpD9mPBW0hnBQ",
+  },
+];
 const suggestionBox = document.querySelector("[data-suggestions]");
 const searchInput = document.querySelector("[data-search]");
 const pickedBox = document.querySelector("[data-picked]");
@@ -28,169 +45,198 @@ const stepLabel = document.querySelector("[data-step-label]");
 let selectedBook = null;
 let selectedPreferences = new Set();
 let currentStep = 1;
+let displayedBooks = [];
+let displayedTotal = null;
+let searchRequest = 0;
+let recommendationRequest = 0;
+let searchTimer;
+let searchController;
+
+const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+})[char]);
 
 function coverUrl(book) {
-  return book.coverUrl || (book.cover?.startsWith("http") ? book.cover : assetRoot + book.cover);
+  return book.coverUrl || (book.cover ? `${fallbackCovers}${book.cover}` : "");
 }
 
-function bookCard(book, className = "") {
-  const year = book.year ? ` (${book.year})` : "";
-  return `<img src="${coverUrl(book)}" alt=""/><span><strong>${book.title}</strong><small>${book.author}${year}</small></span>`;
+function bookCard(book) {
+  const image = coverUrl(book);
+  const meta = [book.author, book.age ? `Alder ${book.age}` : "", book.format === "AUDIO_BOOK_ONLINE" ? "Lydbog" : "E-bog"]
+    .filter(Boolean).join(" · ");
+  return `${image ? `<img src="${escapeHtml(image)}" alt="Forside til ${escapeHtml(book.title)}" loading="lazy"/>` : ""}<span><strong>${escapeHtml(book.title || "Titel mangler")}</strong><small>${escapeHtml(meta)}</small></span>`;
 }
 
-function selectBook(book) {
-  selectedBook = book;
-  document.querySelectorAll(".popular-book").forEach(button => {
-    button.setAttribute("aria-pressed", String(button.dataset.title === book.title));
-  });
-  pickedBox.innerHTML = `<div class="picked-book-card">${bookCard(book)}</div>`;
-  pickedBox.hidden = false;
-  suggestionBox.hidden = true;
-  searchInput.value = book.title;
-  nextButton.disabled = false;
-}
-
-function renderSuggestions(query) {
-  const normalized = query.trim().toLocaleLowerCase("da");
-  if (!normalized) {
-    suggestionBox.hidden = true;
-    suggestionBox.innerHTML = "";
-    return;
-  }
-  const matches = availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized) || book.author.toLocaleLowerCase("da").includes(normalized));
-  suggestionBox.innerHTML = matches.length
-    ? matches.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${book.title}" ${index === 0 ? 'aria-current="true"' : ""}>${bookCard(book)}</button>`).join("")
-    : `<p class="no-suggestions">Vi fandt ikke den bog endnu. Prøv et af de populære valg herunder.</p>`;
+function showMessage(message, className = "no-suggestions") {
+  suggestionBox.innerHTML = `<p class="${className}" role="status">${escapeHtml(message)}</p>`;
   suggestionBox.hidden = false;
-  suggestionBox.querySelectorAll("[data-suggestion]").forEach(button => button.addEventListener("click", () => selectBook(books.find(book => book.title === button.dataset.suggestion))));
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`${apiBase}${path}`, options);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "GO-kataloget kunne ikke nås.");
+  return payload;
+}
+
+function renderSearchResults(books) {
+  displayedBooks = books;
+  suggestionBox.innerHTML = books.length
+    ? `<p class="catalog-count">${books.length} digitale muligheder${displayedTotal ? ` blandt ${displayedTotal} katalogresultater` : ""}</p>${books.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${index}">${bookCard(book)}</button>`).join("")}`
+    : `<p class="no-suggestions">Vi fandt ikke digitale bøger eller lydbøger med den søgning. Prøv et andet ord.</p>`;
+  suggestionBox.hidden = false;
+  suggestionBox.querySelectorAll("[data-suggestion]").forEach((button) => {
+    button.addEventListener("click", () => selectBook(displayedBooks[Number(button.dataset.suggestion)]));
+  });
 }
 
 async function searchBooks(query) {
   const normalized = query.trim();
-  if (!normalized) return [];
-  try {
-    const response = await fetch(`${apiBase}/search?q=${encodeURIComponent(normalized)}`);
-    if (!response.ok) throw new Error("GO API unavailable");
-    const payload = await response.json();
-    const results = (payload.results || []).map(book => ({
-      ...book,
-      cover: book.coverUrl,
-      traits: book.subjects || [],
-    }));
-    if (results.length) {
-      availableBooks = [...results, ...books.filter(local => !results.some(book => book.title === local.title))];
-      return results;
-    }
-  } catch {
-    // The static catalog remains available when the adapter is not running.
-  }
-  return availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")) || book.author.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")));
-}
-
-let searchRequest = 0;
-async function renderApiSuggestions(query) {
   const request = ++searchRequest;
-  const normalized = query.trim();
-  if (!normalized) return renderSuggestions(query);
-  suggestionBox.hidden = false;
-  suggestionBox.innerHTML = `<p class="no-suggestions">Søger på GO…</p>`;
-  const results = await searchBooks(normalized);
-  if (request !== searchRequest) return;
-  const matches = results.length ? results : availableBooks.filter(book => book.title.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")) || book.author.toLocaleLowerCase("da").includes(normalized.toLocaleLowerCase("da")));
-  suggestionBox.innerHTML = matches.length
-    ? matches.map((book, index) => `<button class="suggestion-option" type="button" data-suggestion="${book.title.replaceAll('"', '&quot;')}" ${index === 0 ? 'aria-current="true"' : ""}>${bookCard(book)}</button>`).join("")
-    : `<p class="no-suggestions">Vi fandt ikke den bog endnu. Prøv et andet søgeord.</p>`;
-  suggestionBox.hidden = false;
-  suggestionBox.querySelectorAll("[data-suggestion]").forEach(button => button.addEventListener("click", () => selectBook(availableBooks.find(book => book.title === button.dataset.suggestion))));
+  searchController?.abort();
+  if (!normalized) {
+    suggestionBox.hidden = true;
+    return;
+  }
+  if (normalized.length < 2) {
+    showMessage("Skriv mindst to bogstaver for at søge i kataloget.");
+    return;
+  }
+  searchController = new AbortController();
+  showMessage("Søger i eReolen GO…");
+  try {
+    const result = await api(`/search?q=${encodeURIComponent(normalized)}`, { signal: searchController.signal });
+    if (request !== searchRequest) return;
+    displayedTotal = result.total;
+    renderSearchResults(result.results || []);
+  } catch {
+    if (request === searchRequest) showMessage("GO-kataloget svarer ikke lige nu. Prøv igen om lidt.");
+  }
 }
 
-function renderPopular() {
-  document.querySelector("[data-popular]").innerHTML = popularTitles.map(bookTitle => {
-    const book = books.find(candidate => candidate.title === bookTitle);
-    return `<button class="popular-book" type="button" data-title="${book.title}" aria-pressed="false"><img src="${assetRoot}${book.cover}" alt="Forside til ${book.title}"/><span>${book.title}</span></button>`;
-  }).join("");
-  document.querySelectorAll(".popular-book").forEach(button => button.addEventListener("click", () => selectBook(books.find(book => book.title === button.dataset.title))));
+async function selectBook(book) {
+  if (!book) return;
+  selectedBook = book;
+  searchInput.value = book.title;
+  suggestionBox.hidden = true;
+  showStep(2);
+  title.focus({ preventScroll: true });
+}
+
+function renderPopularUniverses() {
+  document.querySelector("[data-popular]").innerHTML = popularUniverses.map(({ query, label, title: bookTitle, coverUrl: image }) =>
+    `<button class="popular-universe" type="button" data-query="${escapeHtml(query)}" aria-label="Søg efter bøger fra ${escapeHtml(label)}"><span class="universe-cover"><img src="${escapeHtml(image)}" alt="Forside til ${escapeHtml(bookTitle)}" loading="lazy" /></span><span class="universe-name">${escapeHtml(label)}</span></button>`).join("");
+  document.querySelectorAll("[data-query]").forEach((button) => button.addEventListener("click", () => {
+    searchInput.value = button.dataset.query;
+    searchBooks(button.dataset.query);
+    searchInput.focus();
+  }));
 }
 
 function renderPreferences() {
-  document.querySelector("[data-preferences]").innerHTML = preferences.map(([label]) => `<button type="button" class="preference-choice" aria-pressed="false" data-like="${label}">${label}</button>`).join("");
-  document.querySelectorAll(".preference-choice").forEach((button, index) => button.addEventListener("click", () => {
+  document.querySelector("[data-preferences]").innerHTML = preferences.map(([key, label]) =>
+    `<button type="button" class="preference-choice" aria-pressed="false" data-like="${key}">${escapeHtml(label)}</button>`).join("");
+  document.querySelectorAll(".preference-choice").forEach((button) => button.addEventListener("click", () => {
+    const key = button.dataset.like;
     const isSelected = button.getAttribute("aria-pressed") === "true";
     button.setAttribute("aria-pressed", String(!isSelected));
-    isSelected ? selectedPreferences.delete(index) : selectedPreferences.add(index);
+    if (isSelected) selectedPreferences.delete(key); else if (selectedPreferences.size < 3) selectedPreferences.add(key);
+    if (selectedPreferences.size >= 3) document.querySelectorAll(".preference-choice:not([aria-pressed='true'])").forEach((choice) => { choice.disabled = true; });
+    else document.querySelectorAll(".preference-choice").forEach((choice) => { choice.disabled = false; });
     nextButton.disabled = selectedPreferences.size === 0;
   }));
 }
 
 function showStep(step) {
   currentStep = step;
-  document.querySelectorAll("[data-step]").forEach(section => { section.hidden = Number(section.dataset.step) !== step; });
+  const sections = document.querySelectorAll("[data-step]");
+  sections.forEach((section) => {
+    section.hidden = Number(section.dataset.step) !== step;
+    section.classList.remove("step-enter");
+  });
+  const activeSection = document.querySelector(`[data-step="${step}"]`);
+  if (activeSection && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    void activeSection.offsetWidth;
+    activeSection.classList.add("step-enter");
+    activeSection.addEventListener("animationend", () => activeSection.classList.remove("step-enter"), { once: true });
+  }
   backButton.hidden = step === 1;
   nextButton.hidden = step === 3;
   if (step === 1) {
     title.textContent = "Find noget ligesom";
-    stepLabel.textContent = "Find din næste favorit";
+    stepLabel.textContent = "Søg i eReolen GO";
     nextButton.textContent = "Næste";
     nextButton.disabled = !selectedBook;
   } else if (step === 2) {
-    title.textContent = "Fortæl os, hvad du kunne lide";
+    title.textContent = "Hvad kunne du godt lide?";
     stepLabel.textContent = "Trin 2 af 3";
-    document.querySelector("[data-selected-summary]").innerHTML = bookCard(selectedBook);
+    document.querySelector("[data-selected-summary]").innerHTML = `<div class="selected-work">${bookCard(selectedBook)}<p>${escapeHtml(selectedBook.description || "")}</p><div class="book-tags">${[...(selectedBook.genres || []), ...(selectedBook.subjects || []).slice(0, 3)].map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}</div></div>`;
     nextButton.textContent = "Find bøger";
     nextButton.disabled = selectedPreferences.size === 0;
   } else {
-    title.textContent = "Vi har fundet 3 bøger ligesom";
-    stepLabel.textContent = "Dine anbefalinger";
+    title.textContent = "Vi har fundet bøger til dig";
+    stepLabel.textContent = "Dine anbefalinger fra GO";
     backButton.textContent = "Prøv igen";
     renderResults();
   }
   if (step === 2) backButton.textContent = "Tilbage";
 }
 
-function renderResults() {
-  const liked = [...selectedPreferences].map(index => preferences[index][1]);
-  const likedText = liked.length < 2 ? liked[0] : `${liked.slice(0, -1).join(", ")} og ${liked.at(-1)}`;
-  document.querySelector("[data-recommendation-copy]").innerHTML = `Hvis du kunne lide <strong>${likedText}</strong> i <strong>${selectedBook.title}</strong>, tror vi, du vil kunne lide…`;
-  const preferencesToMatch = [...selectedPreferences].map(index => preferences[index][0]);
-  const recommendations = availableBooks
-    .filter(book => book.title !== selectedBook.title)
-    .map((book, index) => ({ book, index, score: book.traits.filter(trait => preferencesToMatch.includes(trait)).length }))
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .slice(0, 3)
-    .map(item => item.book);
-  document.querySelector("[data-recommendations]").innerHTML = recommendations.map(book => `<article class="recommendation-card"><div class="cover"><img src="${coverUrl(book)}" alt="Forside til ${book.title}"/></div><button class="save-book" type="button" aria-label="Gem ${book.title}" aria-pressed="false">♡</button><strong class="book-title">${book.title}</strong><span class="book-author">${book.author}${book.year ? ` (${book.year})` : ""}</span></article>`).join("");
-  document.querySelectorAll(".save-book").forEach(button => button.addEventListener("click", () => {
-    const isSaved = button.getAttribute("aria-pressed") === "true";
-    button.setAttribute("aria-pressed", String(!isSaved));
-    button.textContent = isSaved ? "♡" : "♥";
-  }));
+async function renderResults() {
+  const request = ++recommendationRequest;
+  const likes = [...selectedPreferences];
+  const likedText = likes.map((key) => preferences.find(([id]) => id === key)?.[2]).filter(Boolean);
+  const likedCopy = likedText.length < 2 ? likedText[0] : `${likedText.slice(0, -1).join(", ")} og ${likedText.at(-1)}`;
+  document.querySelector("[data-recommendation-copy]").innerHTML = `Hvis du kunne lide <strong>${escapeHtml(likedCopy)}</strong> i <strong>${escapeHtml(selectedBook.title)}</strong>, tror vi, du vil kunne lide…`;
+  const container = document.querySelector("[data-recommendations]");
+  container.innerHTML = `<p class="results-loading" role="status">Vi leder i eReolen GO efter bøger og lydbøger til dig…</p>`;
+  try {
+    const payload = await api(`/recommend?id=${encodeURIComponent(selectedBook.id)}&type=${encodeURIComponent(selectedBook.format || "EBOOK")}&likes=${encodeURIComponent(likes.join(","))}`);
+    if (request !== recommendationRequest) return;
+    const recommendations = payload.results || [];
+    document.querySelector("[data-catalog-note]").textContent = `${recommendations.length} forslag fundet i GO’s digitale katalog ud fra dine valg.`;
+    container.innerHTML = recommendations.length
+      ? recommendations.map((book) => `<article class="recommendation-card"><div class="recommendation-content"><div class="cover">${coverUrl(book) ? `<img src="${escapeHtml(coverUrl(book))}" alt="Forside til ${escapeHtml(book.title)}" loading="lazy"/>` : "<span class='missing-cover'>GO</span>"}</div><strong class="book-title">${escapeHtml(book.title)}</strong><span class="book-author">${escapeHtml([book.author, book.age ? `Alder ${book.age}` : "", book.format === "AUDIO_BOOK_ONLINE" ? "Lydbog" : "E-bog"].filter(Boolean).join(" · "))}</span><span class="match-reason">${escapeHtml(book.reason || "Et fund fra GO-kataloget")}</span></div><button class="save-book" type="button" aria-label="Gem ${escapeHtml(book.title)}" aria-pressed="false">♡</button></article>`).join("")
+      : `<p class="results-empty">Vi fandt ikke et godt match denne gang. Prøv igen med en anden bog eller nogle andre valg.</p>`;
+    document.querySelectorAll(".save-book").forEach((button) => button.addEventListener("click", () => {
+      const saved = button.getAttribute("aria-pressed") === "true";
+      button.setAttribute("aria-pressed", String(!saved));
+      button.textContent = saved ? "♡" : "♥";
+    }));
+  } catch {
+    if (request !== recommendationRequest) return;
+    container.innerHTML = `<p class="results-empty">Vi kan ikke hente forslag fra GO lige nu. Prøv igen om lidt.</p>`;
+  }
 }
 
-renderPopular();
+renderPopularUniverses();
 renderPreferences();
-document.querySelector("[data-search-form]").addEventListener("submit", async event => { event.preventDefault(); await renderApiSuggestions(searchInput.value); suggestionBox.querySelector("[data-suggestion]")?.click(); });
+document.querySelector("[data-search-form]").addEventListener("submit", (event) => { event.preventDefault(); searchBooks(searchInput.value); });
 searchInput.addEventListener("input", () => {
+  searchRequest += 1;
+  searchController?.abort();
   if (selectedBook && searchInput.value.trim() !== selectedBook.title) {
     selectedBook = null;
     pickedBox.hidden = true;
     pickedBox.innerHTML = "";
-    document.querySelectorAll(".popular-book").forEach(button => button.setAttribute("aria-pressed", "false"));
     nextButton.disabled = true;
   }
-  renderApiSuggestions(searchInput.value);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => searchBooks(searchInput.value), 450);
 });
-searchInput.addEventListener("focus", () => { if (searchInput.value) renderApiSuggestions(searchInput.value); });
-document.addEventListener("click", event => { if (!event.target.closest(".book-search-wrap")) suggestionBox.hidden = true; });
+document.addEventListener("click", (event) => { if (!event.target.closest(".book-search-wrap")) suggestionBox.hidden = true; });
 nextButton.addEventListener("click", () => { if (currentStep === 1 && selectedBook) showStep(2); else if (currentStep === 2 && selectedPreferences.size) showStep(3); });
 function resetFlow() {
+  searchRequest += 1;
+  recommendationRequest += 1;
+  clearTimeout(searchTimer);
   selectedBook = null;
   selectedPreferences.clear();
   searchInput.value = "";
   pickedBox.hidden = true;
   pickedBox.innerHTML = "";
   suggestionBox.hidden = true;
-  document.querySelectorAll(".popular-book").forEach(button => button.setAttribute("aria-pressed", "false"));
-  document.querySelectorAll(".preference-choice").forEach(button => button.setAttribute("aria-pressed", "false"));
+  document.querySelectorAll(".preference-choice").forEach((button) => { button.setAttribute("aria-pressed", "false"); button.disabled = false; });
   showStep(1);
 }
 backButton.addEventListener("click", () => currentStep === 3 ? resetFlow() : showStep(currentStep - 1));
@@ -200,7 +246,7 @@ const backgroundFrame = document.querySelector(".page-backdrop iframe");
 function closeFeature() {
   document.body.classList.add("is-closed");
   background.setAttribute("aria-hidden", "false");
-  backgroundFrame.contentWindow?.postMessage({type: "focus-find-ligesom-trigger"}, "*");
+  backgroundFrame.contentWindow?.postMessage({ type: "focus-find-ligesom-trigger" }, "*");
 }
 function openFeature() {
   document.body.classList.remove("is-closed");
@@ -209,7 +255,7 @@ function openFeature() {
 }
 document.querySelector("[data-close]").addEventListener("click", closeFeature);
 document.querySelector("[data-scrim]").addEventListener("click", closeFeature);
-window.addEventListener("message", event => {
+window.addEventListener("message", (event) => {
   if (event.source === backgroundFrame.contentWindow && event.data?.type === "open-find-ligesom") openFeature();
 });
-document.addEventListener("keydown", event => { if (event.key === "Escape") closeFeature(); });
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeFeature(); });

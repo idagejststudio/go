@@ -1,6 +1,6 @@
 # GO prototype API
 
-Fælles server-side adapter for de statiske prototyper. Adapteren bruger en anonym headless browser til at åbne GO's offentligt tilgængelige sider og ingen login, bearer-token eller FBI-credentials.
+Fælles server-side adapter for de statiske prototyper. Adapteren søger i det offentlige GO-site for Københavns Biblioteker (`https://go.bibliotek.kk.dk`) med en anonym headless browser. Der bruges ikke login, bearer-token eller FBI-credentials. Søgeresultaterne begrænses til e-bøger og online-lydbøger.
 
 ## Start
 
@@ -20,9 +20,19 @@ Adapteren bruger systemets Google Chrome på macOS, hvis den findes. På andre m
 ```text
 GET /api/health
 GET /api/search?q=Amalie%20Riemer
-GET /api/work?id=work-of:870970-basis:143316947
+GET /api/work?id=work-of:870970-basis:143316947&type=EBOOK
+GET /api/recommend?id=work-of:870970-basis:143316947&type=EBOOK&likes=humor,eventyr
+GET /api/bogtype?persona=Fantasten
 GET /api/mock
 ```
+
+`/api/bogtype` er til bogtype-testen. Den henter to aktuelle, kuraterede hylder
+for den valgte persona og returnerer de normaliserede GO-data inkl. forside,
+format og link til det rigtige værk.
+
+Alle katalogresultater valideres mod GO's aldersmetadata og begrænses til
+værker, hvis fulde aldersinterval ligger inden for **9–15 år**. Værker uden
+aldersmetadata eller med et interval uden for dette område returneres ikke.
 
 Responsen normaliseres til:
 
@@ -33,9 +43,12 @@ Responsen normaliseres til:
   "author": "...",
   "description": "...",
   "subjects": ["..."],
+  "genres": ["..."],
   "age": "9-12",
+  "pages": 184,
+  "format": "EBOOK",
   "coverUrl": "https://...",
-  "sourceUrl": "https://www.go.aakb.dk/work/..."
+  "sourceUrl": "https://go.bibliotek.kk.dk/work/..."
 }
 ```
 
@@ -48,4 +61,4 @@ const response = await fetch("http://localhost:8787/api/search?q=" + encodeURICo
 const { results } = await response.json();
 ```
 
-Søgning og værksider renderes i en ren browser-context uden cookies eller login. Adapteren læser kun den synlige DOM, som en anonym bruger får. Det gør løsningen egnet til prototypen, men den er stadig afhængig af GO's offentlige side-layout.
+Søgning og værksider renderes i en ren browser-context uden cookies eller login. Adapteren læser kun den synlige DOM, som en anonym bruger får. Det gør løsningen egnet til prototypen, men den er stadig afhængig af GO's offentlige side-layout; dette er ikke en officiel eReolen API.

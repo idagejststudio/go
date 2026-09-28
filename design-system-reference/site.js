@@ -76,8 +76,7 @@ function account() {
   return `${searchbar()}<main class="page account-page"><div class="account-heading"><div><p class="eyebrow">MIN SIDE</p><h1>Christine Louise Poulsen</h1><button type="button" class="account-settings profile-trigger">Brugerindstillinger</button></div><a class="secondary-action" href="./">Log ud</a></div>
     <section class="account-shelf loan-shelf"><div class="section-heading"><div><h2>Bøger jeg har lånt <span>(8)</span></h2></div><div class="rail-controls"><button data-scroll="-1" aria-label="Forrige bøger">←</button><button data-scroll="1" aria-label="Næste bøger">→</button><button class="pill-button find-similar-trigger" type="button" data-open-find-similar>Find noget ligesom</button></div></div>${coverRail(loanCovers,true)}</section>
     <section class="quota-grid"><article class="quota-card"><p>Kvote</p><div><span><b>4 af 10</b><small>E-bøger</small></span><span><b>0 af 10</b><small>Lydbøger</small></span></div></article><article class="quota-card"><p>Blå titler</p><div><span><b>2</b><small>E-bøger</small></span><span><b>2</b><small>Lydbøger</small></span></div></article></section>
-    <section class="account-shelf"><div class="section-heading"><div><h2>Bøger, jeg vil huske til senere <span>(9)</span></h2></div><button class="text-button">Se alle →</button></div>${coverRail(savedCovers)}</section>
-    <section class="account-shelf"><div class="section-heading"><div><h2>Mine favoritter</h2></div><button class="text-button">Se alle →</button></div>${coverRail(["imgImage192.png","imgImage48.png","imgImage43.png","imgImage45.png"])}</section></main>`;
+    <section class="account-shelf"><div class="section-heading"><div><h2>Bøger, jeg vil huske til senere <span>(8)</span></h2></div><button class="text-button">Se alle →</button></div>${coverRail([...savedCovers,"imgImage192.png","imgImage48.png","imgImage43.png","imgImage45.png"])}</section></main>`;
 }
 
 function category() {

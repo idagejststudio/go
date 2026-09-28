@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcfaf7" />
+    <title>Aner du ikke, hvad du vil læse? · eReolen GO!</title>
+    <link rel="stylesheet" href="../design-system-reference/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="idk-quiz" data-app>
+      <section class="idk-intro" data-screen="intro">
+        <a class="idk-back" href="../design-system-reference/index.html">← Tilbage til eReolen GO!</a>
+        <div class="idk-intro-image" role="img" aria-label="Et barn, der tænker over, hvad det skal læse, omgivet af bøger"></div>
+        <div class="idk-intro-copy">
+          <p class="eyebrow">FIND DIN NÆSTE BOG</p>
+          <h1>Aner du ikke,<br />hvad du vil læse?</h1>
+          <p>Fedt. Vi stiller nogle lidt mærkelige spørgsmål og finder tre bøger, du måske vil elske.</p>
+          <button class="primary-action idk-start" type="button" data-start>Jeg ved det ikke <span aria-hidden="true">→</span></button>
+        </div>
+      </section>
+
+      <section class="idk-question-screen" data-screen="quiz" hidden>
+        <header class="idk-bar">
+          <strong>Den mærkelige bog-quiz</strong>
+          <button class="idk-circle" type="button" data-exit aria-label="Afslut quizzen">×</button>
+        </header>
+        <button class="idk-circle question-back" type="button" data-back aria-label="Forrige spørgsmål">←</button>
+        <div class="idk-question-wrap" data-question-wrap>
+          <p class="idk-count" data-count></p>
+          <h1 data-question></h1>
+          <p class="idk-prompt" data-prompt></p>
+          <div class="idk-answers" data-answers></div>
+        </div>
+        <footer class="idk-progress"><div><span>Din helt uvidenskabelige boganbefaling</span><span data-count></span></div><i><b data-progress></b></i></footer>
+      </section>
+
+      <section class="idk-thinking" data-screen="thinking" hidden aria-live="polite">
+        <button class="idk-circle thinking-back" type="button" data-back aria-label="Tilbage til sidste spørgsmål">←</button>
+        <div class="thinking-orbit"><span>?</span><i>✦</i><b>!</b></div>
+        <p class="eyebrow" data-thinking-eyebrow>VI LAVER MEGET VIGTIGE BEREGNINGER</p>
+        <h1 data-thinking-title>Hmmmm… interessant.</h1>
+        <p data-thinking-copy>Vi kigger på snacks, kaos og de meget vigtige emojis.</p>
+      </section>
+
+      <section class="idk-results" data-screen="results" hidden>
+        <header class="idk-bar"><strong>Den mærkelige bog-quiz</strong><button class="idk-circle" type="button" data-exit aria-label="Luk quizzen">×</button></header>
+        <div class="results-heading">
+          <p class="eyebrow">VORES MEGET KVALIFICEREDE GÆT</p>
+          <h1>Nu ved vi, hvilke<br />bøger, du skal prøve!</h1>
+          <p data-result-note></p>
+        </div>
+        <section class="result-picks" data-picks aria-live="polite"></section>
+        <div class="result-bottom"><button class="secondary-action" type="button" data-restart>Start forfra</button></div>
+      </section>
+    </main>
+  </body>
+</html>

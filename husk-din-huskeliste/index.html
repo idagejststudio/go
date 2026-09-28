@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcfaf7" />
+    <title>Husk din huskeliste · eReolen GO!</title>
+    <link rel="stylesheet" href="../design-system-reference/styles.css" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-backdrop" aria-hidden="true"><iframe src="../design-system-reference/min-side.html" title="Min side på eReolen GO!"></iframe></div>
+    <div class="page-scrim" data-scrim></div>
+    <main class="wish-hub" role="dialog" aria-modal="true" aria-labelledby="hub-title" data-dialog>
+      <button class="close-button hub-close" type="button" aria-label="Luk huskelisten" data-close><img src="../design-system-reference/assets/profile-close.svg" alt="" /></button>
+      <section class="hub-step nudge-step" data-step="nudge">
+        <p class="eyebrow">DIN HUSKELISTE</p><h1 id="hub-title" data-heading>Hey! Kan du huske den her?</h1><p class="saved-note" data-saved-note>Du gemte den på din huskeliste for noget tid siden.</p>
+        <article class="nudge-card" data-book-card aria-live="polite"><div class="nudge-cover"><img data-cover alt="" /></div><div class="nudge-copy"><div class="section-label"><span data-icon>👀</span><strong data-kicker>EN LILLE PÅMINDELSE</strong></div><h2 data-title>Finder en bog…</h2><p class="byline" data-author></p><p class="nudge-reason" data-reason></p><div class="book-meta" data-meta></div></div></article>
+        <div class="main-actions"><a class="primary-action" data-read target="_blank" rel="noreferrer">❤️ Ja, den vil jeg læse</a><button class="secondary-action" type="button" data-another>🎲 Vis mig en anden fra min liste</button></div><div class="later-row"><button class="text-action" type="button" data-later>Gem til et bestemt tidspunkt</button></div>
+      </section>
+      <section class="hub-step time-step" data-step="time" hidden aria-labelledby="time-title"><button class="back-link" type="button" data-back>← Tilbage til huskelisten</button><div class="picker-icon" aria-hidden="true">🗓️</div><p class="eyebrow">DIN LÆSEPLAN</p><h1 id="time-title">Hvornår skal GO! minde dig om den?</h1><p class="time-book" data-time-book></p><div class="time-choices" role="group" aria-label="Vælg tidspunkt"><button type="button" class="time-choice" aria-pressed="false" data-time="I weekenden">🎉 <span><strong>I weekenden</strong><small>Når der er ekstra god tid</small></span></button><button type="button" class="time-choice" aria-pressed="false" data-time="I efterårsferien">🍂 <span><strong>I efterårsferien</strong><small>En bog til feriedagene</small></span></button><button type="button" class="time-choice" aria-pressed="false" data-time="Til sommerferien">☀️ <span><strong>Til sommerferien</strong><small>Gem den til lange, lyse dage</small></span></button><button type="button" class="time-choice" aria-pressed="false" data-time="Om en uge">⏳ <span><strong>Om en uge</strong><small>Vi prikker dig på skulderen</small></span></button></div><button class="primary-action save-time" type="button" data-save-time disabled>Gem tidspunkt</button></section>
+      <section class="hub-step confirmation-step" data-step="confirmation" hidden aria-labelledby="confirmation-title"><div class="confirmation-mark" aria-hidden="true">✓</div><p class="eyebrow">SÅDAN!</p><h1 id="confirmation-title">Den venter på dig</h1><p>GO! minder dig om <strong data-confirm-book></strong> <span data-confirm-time></span>.</p><button class="primary-action" type="button" data-done>Fedt, tak!</button></section>
+    </main>
+  </body>
+</html>

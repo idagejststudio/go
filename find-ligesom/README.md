@@ -1,7 +1,7 @@
 # Find noget ligesom
 
-En selvstændig, interaktiv konceptprototype for eReolen GO!: vælg en bog, vælg hvad man kunne lide ved den, og få tre bogforslag med en personlig forklaring.
+En interaktiv konceptprototype for eReolen GO!: søg efter en e-bog eller lydbog i det offentlige GO-katalog, vælg hvad man kunne lide, og få personlige forslag baseret på katalogets emneord, genre og alder.
 
-Åbn `index.html` via en lokal webserver. Siden genbruger stylesheet, farvetokens, DM Sans, ikoner og bogforsider fra `../design-system-reference/`. Bogkatalog og anbefalinger er demoindhold uden backend.
+Start dataadapteren i `../go-api/` (`npm start`) og åbn derefter `index.html` via en lokal webserver. Adapteren søger i Københavns offentlige GO-site og viser kun e-bøger og online-lydbøger. Søgeforslag og anbefalinger indeholder de live katalogoplysninger og forsidebilleder; forslag linker til det relevante værk hos GO.
 
-Flow: bogsøgning/populære valg → præferenceknapper (flere valg) → anbefalinger. På resultatsiden sammensættes teksten automatisk ud fra bog og valgte præferencer; forslag kan gemmes med hjerteknappen. “Prøv igen” nulstiller flowet. Luk-knappen skjuler dialogen, og “Find noget ligesom” ved pilene under “Bøger jeg har lånt” åbner den igen.
+Flow: live værksøgning eller emnevalg → op til tre præferencer → katalogbaserede forslag. Værkernes beskrivelse, emner, genre og aldersangivelse bruges til at finde og begrunde lignende titler. “Prøv igen” nulstiller flowet. Luk-knappen skjuler dialogen, og “Find noget ligesom” ved pilene under “Bøger jeg har lånt” åbner den igen.
