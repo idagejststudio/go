@@ -1,5 +1,5 @@
 const A = "../design-system-reference/assets/";
-const API_BASE = "http://localhost:8787/api";
+const API_BASE = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
 const questions = [
   { question: "Vælg en snack.", prompt: "Vi forklarer ikke hvorfor.", answers: [["🍿", "Popcorn", "humor"], ["🍉", "Vandmelon", "hygge"], ["🌶️", "Stærke chips", "spænding"], ["🍫", "Chokolade", "fantasi"], ["🍕", "Kold pizza fra i går", "mysterie"]] },
   { question: "Hvilken knap trykker du på?", prompt: "Der findes kun ét helt forkert svar. Måske.", answers: [["🔴", "TRYK IKKE", "spænding"], ["🟢", "GRATIS SLIK", "humor"], ["🟣", "???", "fantasi"], ["🔵", "GØR ALT NORMALT IGEN", "hygge"]] },

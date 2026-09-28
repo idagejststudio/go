@@ -1,4 +1,4 @@
-const apiBase = "http://localhost:8787/api";
+const apiBase = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
 const goSearchBase = "https://go.bibliotek.kk.dk/search?q=";
 const seedQueries = ["venskab", "eventyr", "mystik", "humor", "fantasy", "spænding"];
 const $ = (selector) => document.querySelector(selector);

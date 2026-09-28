@@ -1,4 +1,4 @@
-const apiBase = "http://127.0.0.1:8787/api";
+const apiBase = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
 const fallbackCovers = "../design-system-reference/assets/";
 const preferences = [
   ["humor", "Humoren", "humoren"],

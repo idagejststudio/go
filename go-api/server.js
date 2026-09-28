@@ -50,9 +50,14 @@ const mimeTypes = {
 };
 
 async function servePrototypeFile(pathname, res) {
-  const allowed = ["/husk-din-huskeliste/", "/design-system-reference/"];
+  const allowed = [
+    "/bogtype-test/", "/design-system-reference/", "/find-ligesom/",
+    "/husk-din-huskeliste/", "/udelukkelsesfunktion/", "/ved-ikke-soegning/",
+  ];
   if (!allowed.some((prefix) => pathname.startsWith(prefix))) return false;
-  const candidate = resolve(WORKSPACE_ROOT, `.${decodeURIComponent(pathname)}`);
+  const filePath = pathname.endsWith("/") ? `${pathname}index.html` : pathname;
+  if (!Object.hasOwn(mimeTypes, extname(filePath))) return false;
+  const candidate = resolve(WORKSPACE_ROOT, `.${decodeURIComponent(filePath)}`);
   if (!candidate.startsWith(`${WORKSPACE_ROOT}/`)) return false;
   try {
     const file = await readFile(candidate);
@@ -534,11 +539,8 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (url.pathname === "/") {
-      res.writeHead(302, { location: "/husk-din-huskeliste/" });
+      res.writeHead(302, { location: "/design-system-reference/" });
       return res.end();
-    }
-    if (url.pathname === "/husk-din-huskeliste/") {
-      return servePrototypeFile("/husk-din-huskeliste/index.html", res);
     }
     if (await servePrototypeFile(url.pathname, res)) return;
     if (url.pathname === "/api/health") return json(res, 200, { ok: true });

@@ -1,5 +1,5 @@
 const A = "../design-system-reference/assets/";
-const API_BASE = "http://localhost:8787/api";
+const API_BASE = location.protocol === "file:" ? "http://localhost:8787/api" : "/api";
 const books = [
   ["Ormehullet", "Susanna Hartmann", "imgImage202.png"], ["Jagten på sandheden", "Kasper Hoff", "imgImage203.png"], ["Nedtælling", "Teri Terry", "imgImage48.png"], ["Brødrene Løvehjerte", "Astrid Lindgren", "imgImage193.png"], ["Mio, min Mio", "Astrid Lindgren", "imgImage192.png"], ["Pippi Langstrømpe", "Astrid Lindgren", "imgImage213.png"], ["Ronja Røverdatter", "Astrid Lindgren", "imgImage214.png"], ["Lotte fra Spektakelmagergade", "Astrid Lindgren", "imgImage219.png"]
 ];
