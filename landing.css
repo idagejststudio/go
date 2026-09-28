@@ -16,7 +16,7 @@ h1 { margin: 0; font-size: clamp(42px, 6vw, 76px); line-height: 1.04; letter-spa
 .demo-card:hover { transform: translateY(-4px); border-color: #0b2718; box-shadow: 0 7px 0 #0b2718; }
 .demo-card:focus-visible { outline: 3px solid #0b2718; outline-offset: 4px; }
 .card-art { position: relative; height: 190px; overflow: hidden; display: grid; place-items: center; }
-.green { background: #ccedbc; } .purple { background: #d8c6f2; } .yellow { background: #ffe292; }
+.purple { background: #d8c6f2; } .yellow { background: #ffe292; }
 .pink { background: #f8b7c9; } .blue { background: #c0e8e8; } .periwinkle { background: #c5d8f6; }
 .card-copy { display: flex; flex: 1; flex-direction: column; align-items: flex-start; padding: 25px 26px 26px; }
 .card-copy h2 { margin: 11px 0 9px; font-size: 25px; line-height: 1.12; letter-spacing: -.025em; }
@@ -28,7 +28,6 @@ h1 { margin: 0; font-size: clamp(42px, 6vw, 76px); line-height: 1.04; letter-spa
 .cover.left { left: 22%; top: 32px; transform: rotate(-11deg); }
 .cover.right { right: 22%; top: 32px; transform: rotate(10deg); }
 .cover.faded { opacity: .55; }
-.art-word { position: absolute; top: 8px; left: 22px; font-size: 92px; font-weight: 700; letter-spacing: -.1em; line-height: 1; opacity: .16; }
 .art-symbol { position: relative; z-index: 1; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; background: #fff; font-size: 27px; font-weight: 700; box-shadow: 0 3px 0 #0b2718; }
 .art-symbol.cross { position: absolute; left: 18%; top: 16px; width: 65px; height: 65px; background: #66ff55; font-size: 50px; }
 .art-type { display: grid; place-items: center; width: 115px; height: 115px; border: 3px solid #0b2718; border-radius: 35% 65% 50% 50%; background: #fff7df; font-size: 72px; font-weight: 700; transform: translateX(-28px) rotate(-13deg); }
