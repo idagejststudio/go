@@ -57,6 +57,7 @@ let searchTimer;
 let searchController;
 let selectionController;
 let recommendationTimer;
+let recommendationStageTimer;
 let preparedRecommendationPath;
 let preparedRecommendation;
 
@@ -232,20 +233,49 @@ function showStep(step) {
 
 async function renderResults() {
   const request = ++recommendationRequest;
+  clearInterval(recommendationStageTimer);
   const likes = [...selectedPreferences];
   const likedText = likes.map((key) => preferences.find(([id]) => id === key)?.[2]).filter(Boolean);
   const likedCopy = likedText.length < 2 ? likedText[0] : `${likedText.slice(0, -1).join(", ")} og ${likedText.at(-1)}`;
   document.querySelector("[data-recommendation-copy]").innerHTML = `Hvis du kunne lide <strong>${escapeHtml(likedCopy)}</strong> i <strong>${escapeHtml(selectedBook.title)}</strong>, tror vi, du vil kunne lide…`;
   const container = document.querySelector("[data-recommendations]");
-  container.innerHTML = `<p class="results-loading" role="status">Vi leder i eReolen GO efter bøger og lydbøger til dig…</p>`;
+  const resultHeading = document.querySelector("#results-title");
+  const catalogNote = document.querySelector("[data-catalog-note]");
+  title.textContent = "Vi finder bøger til dig";
+  resultHeading.hidden = true;
+  catalogNote.textContent = "";
+  container.innerHTML = "";
+  const loadingNames = {
+    humor: "humor", spænding: "spænding", eventyr: "eventyr", venskab: "venskab",
+    fantasy: "magi", illustrationer: "tegninger", dyr: "dyr",
+  };
+  const stages = [
+    ...likes.map((key, index) => `${index ? "Vi kigger også" : "Vi kigger"} efter bøger med ${loadingNames[key] || key}…`),
+    "Vi samler forslagene til dig…",
+  ];
+  const loadingTimer = setTimeout(() => {
+    if (request !== recommendationRequest) return;
+    container.innerHTML = `<div class="matching-loader"><div class="matching-books" aria-hidden="true"><span></span><span></span><span></span></div><p class="matching-stage" role="status" aria-live="polite" data-matching-stage>${escapeHtml(stages[0])}</p><p class="matching-hint">Vi finder e-bøger og lydbøger i GO’s katalog, som passer til dine valg.</p></div>`;
+    let stage = 0;
+    recommendationStageTimer = setInterval(() => {
+      if (request !== recommendationRequest || stage >= stages.length - 1) {
+        clearInterval(recommendationStageTimer);
+        return;
+      }
+      container.querySelector("[data-matching-stage]").textContent = stages[++stage];
+    }, 1800);
+  }, 180);
   try {
     clearTimeout(recommendationTimer);
     const path = recommendationPath();
     const payload = await (preparedRecommendationPath === path && preparedRecommendation
       ? preparedRecommendation : api(path));
     if (request !== recommendationRequest) return;
+    title.textContent = "Vi har fundet bøger til dig";
+    resultHeading.hidden = false;
+    resultHeading.textContent = "Hvilken vil du prøve?";
     const recommendations = payload.results || [];
-    document.querySelector("[data-catalog-note]").textContent = `${recommendations.length} forslag fundet i GO’s digitale katalog ud fra dine valg.`;
+    catalogNote.textContent = `${recommendations.length} forslag fundet i GO’s digitale katalog ud fra dine valg.`;
     container.innerHTML = recommendations.length
       ? recommendations.map((book) => `<article class="recommendation-card"><div class="recommendation-content"><div class="cover">${coverUrl(book) ? `<img src="${escapeHtml(coverUrl(book))}" alt="Forside til ${escapeHtml(book.title)}" loading="lazy"/>` : "<span class='missing-cover'>GO</span>"}</div><strong class="book-title">${escapeHtml(book.title)}</strong><span class="book-author">${escapeHtml([book.author, book.age ? `Alder ${book.age}` : "", book.format === "AUDIO_BOOK_ONLINE" ? "Lydbog" : "E-bog"].filter(Boolean).join(" · "))}</span><span class="match-reason">${escapeHtml(book.reason || "Et fund fra GO-kataloget")}</span></div><button class="save-book" type="button" aria-label="Gem ${escapeHtml(book.title)}" aria-pressed="false">♡</button></article>`).join("")
       : `<p class="results-empty">Vi fandt ikke et godt match denne gang. Prøv igen med en anden bog eller nogle andre valg.</p>`;
@@ -256,7 +286,13 @@ async function renderResults() {
     }));
   } catch {
     if (request !== recommendationRequest) return;
+    title.textContent = "Vi kunne ikke finde bøger lige nu";
+    resultHeading.hidden = false;
+    resultHeading.textContent = "Prøv igen om lidt";
     container.innerHTML = `<p class="results-empty">Vi kan ikke hente forslag fra GO lige nu. Prøv igen om lidt.</p>`;
+  } finally {
+    clearTimeout(loadingTimer);
+    if (request === recommendationRequest) clearInterval(recommendationStageTimer);
   }
 }
 
@@ -290,6 +326,7 @@ function resetFlow() {
   selectionController?.abort();
   clearTimeout(searchTimer);
   clearTimeout(recommendationTimer);
+  clearInterval(recommendationStageTimer);
   preparedRecommendationPath = null;
   preparedRecommendation = null;
   selectedBook = null;
