@@ -194,8 +194,11 @@ function parseWorkLabel(label) {
 async function searchInPublicGo(query) {
   return withPublicGoPage(`/search?q=${encodeURIComponent(query)}`, async (page) => {
     // The empty-state shell can render before Next.js finishes hydrating the
-    // actual catalogue query, so wait for results or let that request settle.
-    await page.waitForFunction(() => /Viser\s+[\d.]+\s+resultater/i.test(document.body.innerText) || Boolean(document.querySelector('a[href*="/work/"]')), null, { timeout: 8000 }).catch(() => {});
+    // actual catalogue query. Never cache that shell as an empty result.
+    await page.waitForFunction(() =>
+      /Viser\s+[\d.]+\s+resultater|Ingen (?:søge)?resultater/i.test(document.body.innerText)
+      || Boolean(document.querySelector('a[href*="/work/"]')),
+    null, { timeout: 20000 });
     const pageText = await page.locator("body").innerText();
     const totalMatch = pageText.match(/Viser\s+([\d.]+)\s+resultater/i);
     const total = totalMatch ? Number(totalMatch[1].replaceAll(".", "")) : null;
@@ -486,6 +489,9 @@ async function buildBooksForType(persona, profile) {
       }).slice(0, 4).map((book) => ({ ...book, reason: shelf.reason })),
     };
   }));
+  if (shelves.some((shelf) => !shelf.books.length)) {
+    throw new Error(`GO gav en tom boghylde for ${persona}`);
+  }
   return { persona, shelves, source: "public-go-catalog" };
 }
 
