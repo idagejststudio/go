@@ -11,11 +11,19 @@ const TARGET_AGE_MIN = 9;
 const TARGET_AGE_MAX = 15;
 // The concept follows the Copenhagen GO site used by the eReolen GO design.
 const GO_BASE_URL = process.env.GO_BASE_URL || "https://go.bibliotek.kk.dk";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
+const WORK_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const PERSONA_CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_MAX_ENTRIES = 500;
+const MAX_GO_PAGES = 8;
 const WORKSPACE_ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const cache = new Map();
+const inFlight = new Map();
 let browser;
 let browserContext;
+let browserContextPromise;
+let openGoPages = 0;
+const waitingGoPages = [];
 
 const mockBooks = [
   {
@@ -70,18 +78,40 @@ async function servePrototypeFile(pathname, res) {
   }
 }
 
-function cacheGet(key) {
+function cacheGet(key, allowStale = false) {
   const entry = cache.get(key);
-  if (!entry || entry.expires < Date.now()) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.value;
+  if (!entry) return null;
+  if (!allowStale && entry.expires < Date.now()) return null;
+  // Keep frequently used entries when the bounded cache fills up.
+  cache.delete(key);
+  cache.set(key, entry);
+  return entry;
 }
 
-function cacheSet(key, value) {
-  cache.set(key, { value, expires: Date.now() + CACHE_TTL_MS });
+function cacheSet(key, value, ttl) {
+  cache.delete(key);
+  cache.set(key, { value, expires: Date.now() + ttl });
+  if (cache.size > CACHE_MAX_ENTRIES) cache.delete(cache.keys().next().value);
   return value;
+}
+
+function cachedLoad(key, ttl, load, allowStale = false) {
+  const entry = cacheGet(key, allowStale);
+  if (entry && entry.expires >= Date.now()) return Promise.resolve(entry.value);
+  if (entry && allowStale) {
+    if (!inFlight.has(key)) refreshCache(key, ttl, load).catch((error) =>
+      console.warn(`Kunne ikke opdatere ${key}: ${error.message}`));
+    return Promise.resolve(entry.value);
+  }
+  return refreshCache(key, ttl, load);
+}
+
+function refreshCache(key, ttl, load) {
+  if (inFlight.has(key)) return inFlight.get(key);
+  const pending = Promise.resolve().then(load).then((value) => cacheSet(key, value, ttl));
+  inFlight.set(key, pending);
+  pending.finally(() => inFlight.delete(key)).catch(() => {});
+  return pending;
 }
 
 async function fetchGo(path) {
@@ -105,7 +135,8 @@ function browserExecutablePath() {
 }
 
 async function getBrowserContext() {
-  if (!browser || !browser.isConnected()) {
+  if (browser?.isConnected() && browserContext) return browserContext;
+  if (!browserContextPromise) browserContextPromise = (async () => {
     const executablePath = browserExecutablePath();
     browser = await chromium.launch({
       headless: true,
@@ -113,18 +144,33 @@ async function getBrowserContext() {
       args: ["--disable-dev-shm-usage"],
     });
     browserContext = await browser.newContext();
-  }
-  return browserContext;
+    return browserContext;
+  })().finally(() => { browserContextPromise = undefined; });
+  return browserContextPromise;
+}
+
+async function acquireGoPage() {
+  if (openGoPages >= MAX_GO_PAGES) await new Promise((resolve) => waitingGoPages.push(resolve));
+  else openGoPages += 1;
+}
+
+function releaseGoPage() {
+  const next = waitingGoPages.shift();
+  if (next) next();
+  else openGoPages -= 1;
 }
 
 async function withPublicGoPage(path, readPage) {
-  const context = await getBrowserContext();
-  const page = await context.newPage();
+  await acquireGoPage();
+  let page;
   try {
+    const context = await getBrowserContext();
+    page = await context.newPage();
     await page.goto(`${GO_BASE_URL}${path}`, { waitUntil: "domcontentloaded", timeout: 30000 });
     return await readPage(page);
   } finally {
-    await page.close();
+    try { await page?.close(); }
+    finally { releaseGoPage(); }
   }
 }
 
@@ -296,30 +342,26 @@ function normalizeWork(work, format = "EBOOK") {
   };
 }
 
-async function search(query) {
+async function search(query, allowStale = true) {
   const key = `search:${query.toLocaleLowerCase("da")}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const response = await searchInPublicGo(query);
-  // Search cards do not expose audience metadata. Enrich the visible results
-  // from their work pages before returning them, so every consumer gets the
-  // same 9–15 age guard rather than having to implement its own filter.
-  // Fetching every visible result page creates dozens of concurrent browser
-  // navigations for a single keystroke. Only enrich the leading candidates;
-  // the work endpoint still validates age when a child selects a result.
-  const candidates = response.results.slice(0, 8);
-  const enriched = await Promise.all(candidates.map(async (book) => {
-    try { return { ...book, ...(await getWork(book.id, book.format)) }; }
-    catch { return null; }
-  }));
-  const results = enriched.filter((book) => isInTargetAge(book?.age) && matchesCatalogQuery(book, query));
-  return cacheSet(key, {
-    query,
-    ...response,
-    results,
-    ageFilter: `${TARGET_AGE_MIN}-${TARGET_AGE_MAX}`,
-    source: "public-go-browser",
-  });
+  return cachedLoad(key, SEARCH_CACHE_TTL_MS, async () => {
+    const response = await searchInPublicGo(query);
+    // Search cards do not expose audience metadata. Check leading work pages
+    // before returning results, so every consumer gets the same 9–15 guard.
+    const candidates = response.results.slice(0, 8);
+    const enriched = await Promise.all(candidates.map(async (book) => {
+      try { return { ...book, ...(await getWork(book.id, book.format)) }; }
+      catch { return null; }
+    }));
+    const results = enriched.filter((book) => isInTargetAge(book?.age) && matchesCatalogQuery(book, query));
+    return {
+      query,
+      ...response,
+      results,
+      ageFilter: `${TARGET_AGE_MIN}-${TARGET_AGE_MAX}`,
+      source: "public-go-browser",
+    };
+  }, allowStale);
 }
 
 // Search cards already contain the information needed to start the
@@ -328,31 +370,31 @@ async function search(query) {
 // enriched later through /api/work.
 async function searchFast(query) {
   const key = `search-fast:${query.toLocaleLowerCase("da")}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const response = await searchInPublicGo(query);
-  return cacheSet(key, {
-    query,
-    ...response,
-    results: response.results.slice(0, 30),
-    source: "public-go-browser-fast",
-  });
+  return cachedLoad(key, SEARCH_CACHE_TTL_MS, async () => {
+    const response = await searchInPublicGo(query);
+    return {
+      query,
+      ...response,
+      results: response.results.slice(0, 30),
+      source: "public-go-browser-fast",
+    };
+  }, true);
 }
 
 async function getWork(id, format = "EBOOK") {
   const safeFormat = ["EBOOK", "AUDIO_BOOK_ONLINE"].includes(format) ? format : "EBOOK";
   const key = `work:${id}:${safeFormat}`;
-  const cached = cacheGet(key);
-  if (cached) return cached;
-  const work = await workFromPublicGo(id, safeFormat);
-  return cacheSet(key, {
-    id,
-    ...work,
-    subjects: work.subjects || [],
-    format: safeFormat,
-    sourceUrl: `${GO_BASE_URL}/work/${encodeURIComponent(id)}?type=${safeFormat}`,
-    source: "public-go-browser",
-  });
+  return cachedLoad(key, WORK_CACHE_TTL_MS, async () => {
+    const work = await workFromPublicGo(id, safeFormat);
+    return {
+      id,
+      ...work,
+      subjects: work.subjects || [],
+      format: safeFormat,
+      sourceUrl: `${GO_BASE_URL}/work/${encodeURIComponent(id)}?type=${safeFormat}`,
+      source: "public-go-browser",
+    };
+  }, true);
 }
 
 const recommendationSearches = {
@@ -426,9 +468,13 @@ const bookTypeProfiles = {
 async function booksForType(persona) {
   const profile = bookTypeProfiles[persona];
   if (!profile) return null;
+  return cachedLoad(`persona:${persona}`, PERSONA_CACHE_TTL_MS, () => buildBooksForType(persona, profile), true);
+}
+
+async function buildBooksForType(persona, profile) {
   const shelves = await Promise.all(profile.shelves.map(async (shelf) => {
     const queries = shelf.queries || [shelf.query];
-    const searches = await Promise.all(queries.map((query) => search(query)));
+    const searches = await Promise.all(queries.map((query) => search(query, false)));
     const seen = new Set();
     return {
       ...shelf,
@@ -441,6 +487,22 @@ async function booksForType(persona) {
     };
   }));
   return { persona, shelves, source: "public-go-catalog" };
+}
+
+async function warmBookTypes() {
+  for (const persona of Object.keys(bookTypeProfiles)) {
+    try {
+      const key = `persona:${persona}`;
+      if (!cacheGet(key)) {
+        await refreshCache(key, PERSONA_CACHE_TTL_MS,
+          () => buildBooksForType(persona, bookTypeProfiles[persona]));
+      }
+      console.log(`Bogtype klar i cache: ${persona}`);
+    } catch (error) {
+      console.warn(`Kunne ikke forberede ${persona}: ${error.message}`);
+    }
+  }
+  setTimeout(warmBookTypes, PERSONA_CACHE_TTL_MS).unref();
 }
 
 function normalizeTerms(values = []) {
@@ -683,12 +745,16 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`GO prototype API lytter på http://localhost:${PORT}`);
+  // Prepare the seven fixed quiz results after startup. A user can still
+  // request any persona immediately; concurrent requests share that load.
+  setTimeout(warmBookTypes, 3000).unref();
 });
 
 async function closeBrowser() {
   await browser?.close();
   browser = undefined;
   browserContext = undefined;
+  browserContextPromise = undefined;
 }
 
 process.once("SIGINT", async () => { await closeBrowser(); process.exit(0); });
