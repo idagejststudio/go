@@ -56,6 +56,9 @@ let selectionRequest = 0;
 let searchTimer;
 let searchController;
 let selectionController;
+let recommendationTimer;
+let preparedRecommendationPath;
+let preparedRecommendation;
 
 const escapeHtml = (value = "") => String(value).replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -110,8 +113,7 @@ async function searchBooks(query) {
   searchController = new AbortController();
   showMessage("Søger i eReolen GO…");
   try {
-    // Search only returns catalogue items whose age metadata has been checked
-    // against the experience's target age range.
+    // GO's own age filters select books for ages 10, 11, 12 or 13.
     const result = await api(`/search?q=${encodeURIComponent(normalized)}`, { signal: searchController.signal });
     if (request !== searchRequest) return;
     displayedTotal = result.total;
@@ -172,7 +174,25 @@ function renderPreferences() {
     if (selectedPreferences.size >= 3) document.querySelectorAll(".preference-choice:not([aria-pressed='true'])").forEach((choice) => { choice.disabled = true; });
     else document.querySelectorAll(".preference-choice").forEach((choice) => { choice.disabled = false; });
     nextButton.disabled = selectedPreferences.size === 0;
+    prepareRecommendations();
   }));
+}
+
+function recommendationPath() {
+  return `/recommend?id=${encodeURIComponent(selectedBook.id)}&type=${encodeURIComponent(selectedBook.format || "EBOOK")}&likes=${encodeURIComponent([...selectedPreferences].join(","))}`;
+}
+
+function prepareRecommendations() {
+  clearTimeout(recommendationTimer);
+  preparedRecommendationPath = null;
+  preparedRecommendation = null;
+  if (!selectedBook || !selectedPreferences.size) return;
+  recommendationTimer = setTimeout(() => {
+    preparedRecommendationPath = recommendationPath();
+    preparedRecommendation = api(preparedRecommendationPath);
+    // The user may change a choice before opening the result screen.
+    preparedRecommendation.catch(() => {});
+  }, 400);
 }
 
 function showStep(step) {
@@ -219,7 +239,10 @@ async function renderResults() {
   const container = document.querySelector("[data-recommendations]");
   container.innerHTML = `<p class="results-loading" role="status">Vi leder i eReolen GO efter bøger og lydbøger til dig…</p>`;
   try {
-    const payload = await api(`/recommend?id=${encodeURIComponent(selectedBook.id)}&type=${encodeURIComponent(selectedBook.format || "EBOOK")}&likes=${encodeURIComponent(likes.join(","))}`);
+    clearTimeout(recommendationTimer);
+    const path = recommendationPath();
+    const payload = await (preparedRecommendationPath === path && preparedRecommendation
+      ? preparedRecommendation : api(path));
     if (request !== recommendationRequest) return;
     const recommendations = payload.results || [];
     document.querySelector("[data-catalog-note]").textContent = `${recommendations.length} forslag fundet i GO’s digitale katalog ud fra dine valg.`;
@@ -247,6 +270,9 @@ searchInput.addEventListener("input", () => {
   selectionController?.abort();
   if (selectedBook && searchInput.value.trim() !== selectedBook.title) {
     selectedBook = null;
+    clearTimeout(recommendationTimer);
+    preparedRecommendationPath = null;
+    preparedRecommendation = null;
     pickedBox.hidden = true;
     pickedBox.innerHTML = "";
     nextButton.disabled = true;
@@ -263,6 +289,9 @@ function resetFlow() {
   searchController?.abort();
   selectionController?.abort();
   clearTimeout(searchTimer);
+  clearTimeout(recommendationTimer);
+  preparedRecommendationPath = null;
+  preparedRecommendation = null;
   selectedBook = null;
   selectedPreferences.clear();
   searchInput.value = "";

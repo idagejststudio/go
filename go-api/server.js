@@ -7,10 +7,11 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const PORT = Number(process.env.PORT || 8787);
-const TARGET_AGE_MIN = 9;
-const TARGET_AGE_MAX = 15;
+const TARGET_AGE_MIN = 10;
+const TARGET_AGE_MAX = 13;
 // The concept follows the Copenhagen GO site used by the eReolen GO design.
 const GO_BASE_URL = process.env.GO_BASE_URL || "https://go.bibliotek.kk.dk";
+const GO_AGE_FILTER = [10, 11, 12, 13].map((age) => `age=${encodeURIComponent(`for ${age} år`)}`).join("&");
 const SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 const WORK_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const PERSONA_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -192,7 +193,7 @@ function parseWorkLabel(label) {
 }
 
 async function searchInPublicGo(query) {
-  return withPublicGoPage(`/search?q=${encodeURIComponent(query)}`, async (page) => {
+  return withPublicGoPage(`/search?q=${encodeURIComponent(query)}&${GO_AGE_FILTER}`, async (page) => {
     // The empty-state shell can render before Next.js finishes hydrating the
     // actual catalogue query. Never cache that shell as an empty result.
     await page.waitForFunction(() =>
@@ -349,20 +350,12 @@ async function search(query, allowStale = true) {
   const key = `search:${query.toLocaleLowerCase("da")}`;
   return cachedLoad(key, SEARCH_CACHE_TTL_MS, async () => {
     const response = await searchInPublicGo(query);
-    // Search cards do not expose audience metadata. Check leading work pages
-    // before returning results, so every consumer gets the same 9–15 guard.
-    const candidates = response.results.slice(0, 8);
-    const enriched = await Promise.all(candidates.map(async (book) => {
-      try { return { ...book, ...(await getWork(book.id, book.format)) }; }
-      catch { return null; }
-    }));
-    const results = enriched.filter((book) => isInTargetAge(book?.age) && matchesCatalogQuery(book, query));
     return {
       query,
       ...response,
-      results,
+      results: response.results.slice(0, 12),
       ageFilter: `${TARGET_AGE_MIN}-${TARGET_AGE_MAX}`,
-      source: "public-go-browser",
+      source: "public-go-age-filter",
     };
   }, allowStale);
 }
@@ -522,24 +515,7 @@ function ageRange(value) {
 
 function isInTargetAge(age) {
   const range = ageRange(age);
-  return Boolean(range && range[0] >= TARGET_AGE_MIN && range[1] <= TARGET_AGE_MAX);
-}
-
-function matchesCatalogQuery(book, query) {
-  const ignored = new Set(["den", "det", "de", "en", "et", "og", "i", "på", "af", "med", "til", "fra", "år"]);
-  const tokenize = (value) => (normalizeTerms([value || ""])[0] || "")
-    .split(/[^a-zæøå0-9]+/i)
-    .filter((term) => term.length > 1 && !/^\d+$/.test(term) && !ignored.has(term));
-  const queryTerms = tokenize(query);
-  if (!queryTerms.length) return true;
-  const searchable = new Set(tokenize([
-    book.title,
-    book.author,
-    ...(book.subjects || []),
-    ...(book.genres || []),
-  ].filter(Boolean).join(" ")));
-  const matched = queryTerms.filter((term) => searchable.has(term)).length;
-  return matched / queryTerms.length >= (queryTerms.length > 2 ? 0.6 : 1);
+  return Boolean(range && range[0] <= TARGET_AGE_MAX && range[1] >= TARGET_AGE_MIN);
 }
 
 async function recommend(id, likes, format = "EBOOK") {
@@ -547,15 +523,7 @@ async function recommend(id, likes, format = "EBOOK") {
   const keys = likes.filter((like) => recommendationSearches[like]);
   if (!keys.length) return { selected, results: [] };
 
-  const selectedAge = ageRange(selected.age);
-  const ageHint = selectedAge
-    ? `${Math.max(TARGET_AGE_MIN, selectedAge[0])}-${Math.min(TARGET_AGE_MAX, selectedAge[1] + 1)}`
-    : "9-15";
-  const preferenceQueries = keys.flatMap((key) => recommendationSearches[key].map((term) => `${term} ${ageHint}`));
-  const queries = [...new Set(preferenceQueries)];
-  // Recommendation discovery only needs titles, ids and cover art. Defer
-  // metadata lookups until after merging/ranking instead of enriching every
-  // result of every query.
+  const queries = [...new Set(keys.flatMap((key) => recommendationSearches[key]))];
   const resultSets = await Promise.all(queries.map((query) => searchFast(query)));
   const candidates = new Map();
   const addCandidates = (sets, terms, preferenceMatch) => sets.forEach((set, queryIndex) => set.results.forEach((book, rank) => {
@@ -564,7 +532,7 @@ async function recommend(id, likes, format = "EBOOK") {
     current.queryMatches.push(terms[queryIndex]);
     if (preferenceMatch) {
       for (const key of keys) {
-        if (recommendationSearches[key].some((term) => terms[queryIndex].startsWith(term))
+        if (recommendationSearches[key].includes(terms[queryIndex])
           && !current.preferenceMatches.includes(key)) {
           current.preferenceMatches.push(key);
         }
@@ -575,77 +543,15 @@ async function recommend(id, likes, format = "EBOOK") {
   }));
   addCandidates(resultSets, queries, true);
   const franchiseTerms = normalizeTerms(selected.subjects.slice(0, 1)).filter((term) => term.length >= 5);
-  const eligibleCandidates = () => [...candidates.values()]
-    .filter((candidate) => !franchiseTerms.some((term) => normalizeTerms([candidate.title])[0]?.includes(term)));
-  const candidateBatch = (books, limit = 8) => {
-    const byPreference = keys.map((key) => books.filter((book) => book.preferenceMatches.includes(key)));
-    const chosen = [];
-    const seen = new Set();
-    const maxRank = Math.max(0, ...byPreference.map((matches) => matches.length));
-    for (let rank = 0; rank < maxRank && chosen.length < limit; rank += 1) {
-      for (const matches of byPreference) {
-        const candidate = matches[rank];
-        if (!candidate || seen.has(candidate.id)) continue;
-        seen.add(candidate.id);
-        chosen.push(candidate);
-        if (chosen.length >= limit) break;
-      }
-    }
-    for (const book of books) {
-      if (chosen.length >= limit) break;
-      if (seen.has(book.id)) continue;
-      seen.add(book.id);
-      chosen.push(book);
-    }
-    return chosen;
-  };
-  const readDetails = async (candidateList) => Promise.all(candidateList.map(async (candidate) => {
-    try { return { ...candidate, ...(await getWork(candidate.id, candidate.format)) }; }
-    catch { return candidate; }
-  }));
-  const ignoredTerms = new Set([...franchiseTerms, "romaner", "piger", "børn", "venner"]);
-  const sourceTerms = new Set(normalizeTerms([...selected.subjects.slice(1), ...selected.genres]).filter((term) => !ignoredTerms.has(term)));
-  const rankDetails = (details) => details.map((book) => {
-    const bookTerms = normalizeTerms([...book.subjects || [], ...book.genres || []]);
-    const shared = bookTerms.filter((term) => sourceTerms.has(term));
-    const sourceAge = ageRange(selected.age);
-    const candidateAge = ageRange(book.age);
-    const sameAge = sourceAge && candidateAge && candidateAge[0] <= sourceAge[1] && sourceAge[0] <= candidateAge[1];
-    const ageMismatch = sourceAge && candidateAge
-      && (candidateAge[1] <= sourceAge[0] || candidateAge[0] >= sourceAge[1]);
-    return { ...book, shared, ageMismatch, score: book.rankScore + shared.length * 16 + (sameAge ? 12 : 0) };
-  }).filter((book) => isInTargetAge(book.age) && !book.ageMismatch).sort((a, b) => b.score - a.score);
-  let details = await readDetails(candidateBatch(eligibleCandidates()));
-  let ranked = rankDetails(details);
-  const checkedCandidateIds = new Set(details.map((book) => book.id));
-  // Search pages are ordered by popularity, so the first books for one
-  // preference may all be outside the target age range. Probe the next
-  // candidates only for preferences that still have no eligible match.
-  for (let round = 0; round < 4; round += 1) {
-    const representedPreferences = new Set(ranked.flatMap((book) => book.preferenceMatches));
-    const missingPreferences = keys.filter((key) => !representedPreferences.has(key));
-    if (!missingPreferences.length) break;
-    const nextCandidates = [];
-    for (const key of missingPreferences) {
-      const candidate = eligibleCandidates().find((book) =>
-        book.preferenceMatches.includes(key) && !checkedCandidateIds.has(book.id));
-      if (!candidate) continue;
-      checkedCandidateIds.add(candidate.id);
-      nextCandidates.push(candidate);
-    }
-    if (!nextCandidates.length) break;
-    details = [...details, ...await readDetails(nextCandidates)];
-    ranked = rankDetails(details);
-  }
-  // If preference matches are too narrow after age/franchise filtering, use
-  // the source work's genre as a low-priority fallback to fill the shelf.
+  const rankCandidates = () => [...candidates.values()]
+    .filter((candidate) => !franchiseTerms.some((term) => normalizeTerms([candidate.title])[0]?.includes(term)))
+    .sort((a, b) => b.rankScore - a.rankScore);
+  let ranked = rankCandidates();
+  // Use the source book's genre if the chosen preferences yield too few titles.
   const fallbackGenre = selected.genres.find((genre) => genre && !queries.includes(genre)) || selected.genres[0];
   if (ranked.length < 3 && fallbackGenre && !queries.includes(fallbackGenre)) {
-    const existingIds = new Set(candidates.keys());
     addCandidates([await searchFast(fallbackGenre)], [fallbackGenre], false);
-    const added = eligibleCandidates().filter((candidate) => !existingIds.has(candidate.id));
-    details = [...details, ...await readDetails(added.slice(0, 8))];
-    ranked = rankDetails(details);
+    ranked = rankCandidates();
   }
 
   // Give each selected preference a chance to lead one recommendation. Some
@@ -684,10 +590,16 @@ async function recommend(id, likes, format = "EBOOK") {
       ...book,
       reason: book.recommendationPreference
         ? `Har masser af ${recommendationLabels[book.recommendationPreference] || book.recommendationPreference}`
-        : book.shared[0] ? `Har også ${book.shared[0].toLocaleLowerCase("da")}` : "Et nyt fund til din læseliste",
+        : "Et nyt fund til din læseliste",
     })),
     source: "public-go-catalog",
   };
+}
+
+function recommendationsFor(id, likes, format = "EBOOK") {
+  const safeFormat = ["EBOOK", "AUDIO_BOOK_ONLINE"].includes(format) ? format : "EBOOK";
+  const key = `recommend:${id}:${safeFormat}:${likes.join(",")}`;
+  return cachedLoad(key, SEARCH_CACHE_TTL_MS, () => recommend(id, likes, safeFormat), true);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -718,7 +630,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: "id skal være et gyldigt GO work-id" });
       }
       const work = await getWork(id, format);
-      if (!isInTargetAge(work.age)) return json(res, 404, { error: "Værket er uden for aldersgruppen 9-15 år" });
+      if (!isInTargetAge(work.age)) return json(res, 404, { error: "Værket passer ikke til aldersfilteret 10-13 år" });
       return json(res, 200, work);
     }
 
@@ -729,8 +641,8 @@ const server = http.createServer(async (req, res) => {
         return json(res, 400, { error: "id skal være et gyldigt GO work-id" });
       }
       const selected = await getWork(id, url.searchParams.get("type") || "EBOOK");
-      if (!isInTargetAge(selected.age)) return json(res, 404, { error: "Værket er uden for aldersgruppen 9-15 år" });
-      return json(res, 200, await recommend(id, likes, url.searchParams.get("type") || "EBOOK"));
+      if (!isInTargetAge(selected.age)) return json(res, 404, { error: "Værket passer ikke til aldersfilteret 10-13 år" });
+      return json(res, 200, await recommendationsFor(id, likes, url.searchParams.get("type") || "EBOOK"));
     }
 
     if (url.pathname === "/api/bogtype") {

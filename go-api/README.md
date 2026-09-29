@@ -30,9 +30,12 @@ GET /api/mock
 for den valgte persona og returnerer de normaliserede GO-data inkl. forside,
 format og link til det rigtige værk.
 
-Alle katalogresultater valideres mod GO's aldersmetadata og begrænses til
-værker, hvis fulde aldersinterval ligger inden for **9–15 år**. Værker uden
-aldersmetadata eller med et interval uden for dette område returneres ikke.
+Søgninger bruger GO's egne aldersfiltre for **10, 11, 12 og 13 år**. Et værk
+kan vises, hvis GO markerer det som egnet til mindst én af disse aldre;
+filteret betyder ikke, at værkets fulde aldersinterval ligger inden for 10–13.
+Når brugeren vælger et værk, hentes detaljerne og alderen kontrolleres dér.
+Anbefalinger bruger de samme GO-filtre og kræver derfor ikke et separat
+aldersopslag for hver kandidat.
 
 Responsen normaliseres til:
 
