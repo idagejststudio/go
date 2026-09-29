@@ -278,7 +278,7 @@ searchInput.addEventListener("input", () => {
     nextButton.disabled = true;
   }
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => searchBooks(searchInput.value), 250);
+  searchTimer = setTimeout(() => searchBooks(searchInput.value), 500);
 });
 document.addEventListener("click", (event) => { if (!event.target.closest(".book-search-wrap")) suggestionBox.hidden = true; });
 nextButton.addEventListener("click", () => { if (currentStep === 1 && selectedBook) showStep(2); else if (currentStep === 2 && selectedPreferences.size) showStep(3); });
