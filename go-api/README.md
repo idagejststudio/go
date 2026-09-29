@@ -55,7 +55,7 @@ Responsen normaliseres til:
 }
 ```
 
-Adapteren cacher søgninger og bogtyper i 30 minutter og værkdata i seks timer. De syv faste bogtyper forberedes i baggrunden efter serverstart og opdateres løbende. Udløbne svar vises med det samme, mens nye data hentes i baggrunden. Samtidige forespørgsler efter samme data deler én hentning. Første forespørgsel efter opstart kan stadig tage tid, indtil den pågældende bogtype er forberedt. Cachen ligger i hukommelsen og nulstilles ved genstart.
+Adapteren cacher søgninger, anbefalinger og bogtyper i 30 minutter og værkdata i seks timer. De faste interesse-søgninger og de fire populære bogsøgninger til Find ligesom forberedes først i baggrunden efter serverstart; derefter forberedes bogtyperne. De opdateres løbende. Udløbne svar vises med det samme, mens nye data hentes i baggrunden. Samtidige forespørgsler efter samme data deler én hentning. Første forespørgsel efter opstart kan stadig tage tid, indtil søgningerne er forberedt. Cachen ligger i hukommelsen og nulstilles ved genstart.
 
 Sæt `MOCK_FALLBACK=1`, hvis prototypen skal kunne vise eksempeldata, når GO midlertidigt ikke kan nås.
 

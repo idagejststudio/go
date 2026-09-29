@@ -364,7 +364,7 @@ async function search(query, allowStale = true) {
 // exclusion flow. Unlike search(), this route deliberately avoids opening a
 // detail page for every result before responding; the chosen books are
 // enriched later through /api/work.
-async function searchFast(query) {
+async function searchFast(query, allowStale = true) {
   const key = `search-fast:${query.toLocaleLowerCase("da")}`;
   return cachedLoad(key, SEARCH_CACHE_TTL_MS, async () => {
     const response = await searchInPublicGo(query);
@@ -374,7 +374,7 @@ async function searchFast(query) {
       results: response.results.slice(0, 30),
       source: "public-go-browser-fast",
     };
-  }, true);
+  }, allowStale);
 }
 
 async function getWork(id, format = "EBOOK") {
@@ -501,7 +501,33 @@ async function warmBookTypes() {
       console.warn(`Kunne ikke forberede ${persona}: ${error.message}`);
     }
   }
-  setTimeout(warmBookTypes, PERSONA_CACHE_TTL_MS).unref();
+}
+
+async function warmFindLigesom() {
+  const preferenceQueries = [...new Set(Object.values(recommendationSearches).flat())];
+  const popularQueries = ["Harry Potter", "Ternet Ninja", "Pippi Langstrømpe", "Minecraft"];
+  for (let index = 0; index < preferenceQueries.length; index += 3) {
+    await Promise.all(preferenceQueries.slice(index, index + 3).map(async (query) => {
+      try { await searchFast(query, false); }
+      catch (error) { console.warn(`Kunne ikke forberede ${query}: ${error.message}`); }
+    }));
+  }
+  for (let index = 0; index < popularQueries.length; index += 2) {
+    await Promise.all(popularQueries.slice(index, index + 2).map(async (query) => {
+      try { await search(query, false); }
+      catch (error) { console.warn(`Kunne ikke forberede ${query}: ${error.message}`); }
+    }));
+  }
+  console.log("Find ligesom-søgninger klar i cache");
+}
+
+async function warmCatalog() {
+  try {
+    await warmFindLigesom();
+    await warmBookTypes();
+  } finally {
+    setTimeout(warmCatalog, SEARCH_CACHE_TTL_MS).unref();
+  }
 }
 
 function normalizeTerms(values = []) {
@@ -663,9 +689,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`GO prototype API lytter på http://localhost:${PORT}`);
-  // Prepare the seven fixed quiz results after startup. A user can still
-  // request any persona immediately; concurrent requests share that load.
-  setTimeout(warmBookTypes, 3000).unref();
+  // Prepare reusable Find ligesom searches first, then the fixed quiz results.
+  setTimeout(warmCatalog, 3000).unref();
 });
 
 async function closeBrowser() {
